@@ -7,7 +7,7 @@ Resume here after a context reset: read this file, then `git log --oneline`.
 - [x] 1. Skeleton: package, CLI, case folder, hashing and manifest, processing log, event schema, SQLite store, CI
 - [x] 2. Formats and corpus
 - [x] 3. Parsers and normalization
-- [ ] 4. Evidence gap analysis
+- [x] 4. Evidence gap analysis
 - [ ] 5. Detection
 - [ ] 6. Timeline and pivot
 - [ ] 7. Report
@@ -37,10 +37,18 @@ Resume here after a context reset: read this file, then `git log --oneline`.
 - Entra audit JSON parsing is tested only through unit-level normalization, not a generated export
   (the corpus has no Entra audit download).
 
+- Phase 4: versioned gap reference table (8 sources, citations, verified flags, export limits);
+  coverage per source and container; gaps of kind missing, auditing_absent, truncated, ends_early,
+  retention, quiet, user_absent and filtered, each with likely causes and citations.
+  tests/test_coverage.py: all five degraded cases report their intended gap and cause (sign-ins
+  missing; UAL truncated with the ResultCount evidence and early end; 7-day retention named as
+  Microsoft Entra ID Free; mailbox auditing absent with its documented causes; a two-day quiet
+  period); the six intact cases report no gaps; the demo reports only its missing non-interactive
+  sign-ins; a user absent from every log is reported per source.
+
 ## Next
 
-- Phase 4: evidence gap analysis (reference table, per-source coverage by container, missing,
-  truncated, retention, quiet periods, auditing absent).
+- Phase 5: rule engine, rule files, baseline, per-rule capability check feeding the gap analysis.
 
 ## Drafted ahead (uncommitted until their phase)
 
