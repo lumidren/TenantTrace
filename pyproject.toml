@@ -26,7 +26,8 @@ tteval = "tteval.evaluate:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-tenanttrace = ["rules/*.yaml", "reference/*.yaml", "report/template.html"]
+tenanttrace = ["rules/*.yaml", "rules/README.md", "reference/*.yaml", "report/template.html"]
+ttcorpus = ["scenarios/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
