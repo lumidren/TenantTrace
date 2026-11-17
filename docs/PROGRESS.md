@@ -9,7 +9,7 @@ Resume here after a context reset: read this file, then `git log --oneline`.
 - [x] 3. Parsers and normalization
 - [x] 4. Evidence gap analysis
 - [x] 5. Detection
-- [ ] 6. Timeline and pivot
+- [x] 6. Timeline and pivot
 - [ ] 7. Report
 - [ ] 8. Evaluation and ship
 
@@ -56,10 +56,19 @@ Resume here after a context reset: read this file, then `git log --oneline`.
   10/10 rules correctly not assessable, 10/10 gaps, 12/12 pivot accounts, 0 extra.
   tests/test_determinism.py (two runs identical) and tests/test_network.py (full run, no socket).
 
+- Phase 6: the demo timeline reads AiTM sign-in (Dallas) -> session replay from Amsterdam
+  (inference with basis) -> MFA registration -> hiding inbox rule -> mailbox access -> bulk download
+  -> anonymous links -> internal phishing -> return visit -> deleted sent items. Post-compromise
+  steps link to the attacker's sign-in by recorded token ID (observed). tests/test_timeline.py:
+  order, labels, basis on every inference, a copy of the demo with session IDs stripped falls back to
+  IP-and-time links labelled as inferences (and the hiding rule drops from confirmed to probable),
+  the pivot lists exactly the second victim (demo), the three spray targets (legacy case) and the
+  second consenting user (OAuth case).
+
 ## Next
 
-- Phase 6: timeline and pivot verification (session linking, sequence order, fact and inference
-  labels, confidence on every step, pivot listing the second account).
+- Phase 7: report (Vite + TypeScript single-file HTML template committed in the package, PDF via
+  fpdf2, JSON export, raw-record view, coverage chart, interactive timeline, print, themes).
 
 ## Drafted ahead (uncommitted until their phase)
 
