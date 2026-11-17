@@ -1,0 +1,41 @@
+id: attack_travel_delegate
+title: "Impossible travel from a new device, device registration, folder permission and external sharing"
+kind: attack
+seed: 55210
+tenant: {name: Kestrel Freight, domain: kestrel.example}
+period: {start: "2026-10-13T18:00:00Z", end: "2026-11-12T18:00:00Z"}
+collected_at: "2026-11-12T18:00:00Z"
+primary_user: ryan
+users:
+  - {key: ryan, alias: ryan.ashdown, display: Ryan Ashdown, role: logistics, home: leeds}
+  - {key: mei, alias: mei.tanaka, display: Mei Tanaka, role: logistics, home: leeds}
+  - {key: carl, alias: carl.jensen, display: Carl Jensen, role: admin, home: leeds}
+  - {key: fiona, alias: fiona.drake, display: Fiona Drake, role: finance, home: london}
+infra:
+  atk_sg: {ip: 203.0.113.200, location: singapore}
+scripts:
+  - start: "2026-11-03T09:20:00Z"
+    actor: attacker
+    steps:
+      - {id: foreign_signin, at: "+0m", do: signin, user: ryan, from: atk_sg, ua: attacker_linux, session: atk1,
+         mfa_detail: "MFA requirement satisfied by claim in the token",
+         expect: [TT-SIGNIN-002, TT-SIGNIN-001, TT-SIGNIN-003]}
+      - {id: token_refresh, at: "+20m", do: signin, user: ryan, from: atk_sg, ua: attacker_linux, session: atk1,
+         interactive: false, app: outlook, resource: exchange, client_app: "Mobile Apps and Desktop clients",
+         count: 5, every: 45m, expect: [TT-SIGNIN-007]}
+      - {id: device_registration, at: "+31m", do: device_register, user: ryan, session: atk1,
+         device_name: "DESKTOP-7Q2K9ZX", expect: [TT-AUTH-002]}
+      - {id: folder_permission, at: "+44m", do: exchange_cmdlet, user: ryan, session: atk1,
+         cmdlet: Add-MailboxFolderPermission, params: {User: Default, AccessRights: Reviewer},
+         expect: [TT-MAIL-003]}
+      - {id: external_share, at: "+60m", do: share, user: ryan, session: atk1, count: 6,
+         operation: SharingInvitationCreated, target: "partner.desk@external-share.example.org",
+         target_type: Guest, expect: [TT-FILE-002]}
+exports:
+  - {format: entra_signin_json, which: interactive, path: "EntraSignIns/InteractiveSignIns.json"}
+  - {format: entra_signin_json, which: noninteractive, path: "EntraSignIns/NonInteractiveSignIns.json"}
+  - {format: purview_ual_csv, path: "UAL/AuditLog_2026-11-12.csv"}
+truth:
+  compromise_start: "2026-11-03T09:20:00Z"
+  pivot_users: []
+  expected_gaps: []

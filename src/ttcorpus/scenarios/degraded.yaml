@@ -1,0 +1,44 @@
+# Degraded copies of attack scenarios. Each variant starts from a base scenario, applies one
+# degradation to its exports and states the gap the tool must report.
+variants:
+  - id: degraded_no_signins
+    base: attack_legacy_forwarding
+    title: "Legacy/forwarding attack with the sign-in logs not supplied"
+    degrade: {remove_formats: [entra_signin_csv]}
+    truth:
+      expected_gaps:
+        - {source: entra_signin_interactive, kind: missing}
+        - {source: entra_signin_noninteractive, kind: missing}
+      expected_not_assessable: [TT-SIGNIN-001, TT-SIGNIN-002, TT-SIGNIN-003, TT-SIGNIN-004, TT-SIGNIN-005,
+                                TT-SIGNIN-006, TT-SIGNIN-007]
+      drop_expected_rules: [TT-SIGNIN-001, TT-SIGNIN-002, TT-SIGNIN-003, TT-SIGNIN-004, TT-SIGNIN-005,
+                            TT-SIGNIN-006, TT-SIGNIN-007]
+  - id: degraded_ual_truncated
+    base: attack_legacy_forwarding
+    title: "Legacy/forwarding attack with the audit log export cut off before the attack ended"
+    degrade: {truncate_format: ps_ual_csv, keep_until: "2026-09-29T04:25:00Z"}
+    truth:
+      expected_gaps:
+        - {source: ual_exchange, kind: truncated}
+      drop_expected_truth_ids: [imap_sync]
+  - id: degraded_retention_7d
+    base: attack_travel_delegate
+    title: "Impossible-travel attack with sign-in logs limited to the last 7 days"
+    degrade: {retention_days: {entra_signin_json: 7}}
+    truth:
+      expected_gaps:
+        - {source: entra_signin_interactive, kind: retention, cause_contains: "7"}
+        - {source: entra_signin_noninteractive, kind: retention, cause_contains: "7"}
+      # the attack sign-ins (9 days before collection) fall outside a 7-day retention window
+      expected_not_assessable: [TT-SIGNIN-001, TT-SIGNIN-003]
+      drop_expected_rules: [TT-SIGNIN-001, TT-SIGNIN-002, TT-SIGNIN-003, TT-SIGNIN-007]
+  - id: degraded_no_mailbox_audit
+    base: demo_bec
+    title: "Demo attack with mailbox auditing absent (no mailbox item records)"
+    degrade: {drop_operations: [MailItemsAccessed, Send, SoftDelete, HardDelete, MoveToDeletedItems]}
+    truth:
+      expected_gaps:
+        - {source: entra_signin_noninteractive, kind: missing}
+        - {source: ual_mailbox_items, kind: auditing_absent}
+      expected_not_assessable: [TT-MAIL-004]
+      drop_expected_rules: [TT-MAIL-004]

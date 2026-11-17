@@ -1,0 +1,31 @@
+id: benign_forwarding_vpn
+title: "Benign: an internal forwarding rule and a user who always connects through a VPN"
+kind: benign
+seed: 4242
+tenant: {name: Alder and Finch Solicitors, domain: alderfinch.example}
+period: {start: "2026-09-23T17:00:00Z", end: "2026-10-23T17:00:00Z"}
+collected_at: "2026-10-23T17:00:00Z"
+primary_user: ben
+users:
+  - {key: maya, alias: maya.okafor, display: Maya Okafor, role: partner, home: leeds}
+  - {key: ben, alias: ben.travers, display: Ben Travers, role: associate, home: leeds, vpn: corp_vpn}
+  - {key: chloe, alias: chloe.marsh, display: Chloe Marsh, role: paralegal, home: leeds}
+  - {key: dev, alias: dev.anand, display: Dev Anand, role: admin, home: leeds}
+infra:
+  corp_vpn: {ip: 192.0.2.50, location: amsterdam}
+scripts:
+  - start: "2026-10-19T09:30:00Z"
+    actor: benign
+    steps:
+      - {id: internal_rule, at: "+0m", do: inbox_rule, user: ben, from: baseline, name: "Invoices to accounts",
+         params: {From: "billing@supplier.example.com", ForwardTo: "accounts@alderfinch.example"}}
+exports:
+  - {format: entra_signin_json, which: interactive, path: "signins_interactive.json"}
+  - {format: entra_signin_json, which: noninteractive, path: "signins_noninteractive.json"}
+  - {format: purview_ual_csv, path: "ual_export.csv"}
+truth:
+  compromise_start: null
+  window_start: "2026-10-12T00:00:00Z"
+  allowed_findings: []
+  pivot_users: []
+  expected_gaps: []

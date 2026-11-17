@@ -1,0 +1,37 @@
+id: benign_travel_newphone
+title: "Benign: a business trip to Madrid and a new phone registered for MFA"
+kind: benign
+seed: 31337
+tenant: {name: Alder and Finch Solicitors, domain: alderfinch.example}
+period: {start: "2026-09-23T17:00:00Z", end: "2026-10-23T17:00:00Z"}
+collected_at: "2026-10-23T17:00:00Z"
+primary_user: maya
+users:
+  - {key: maya, alias: maya.okafor, display: Maya Okafor, role: partner, home: leeds,
+     travel: [{from: "2026-10-13T00:00:00Z", to: "2026-10-17T00:00:00Z", location: madrid, ip: 198.51.100.150}]}
+  - {key: ben, alias: ben.travers, display: Ben Travers, role: associate, home: leeds}
+  - {key: chloe, alias: chloe.marsh, display: Chloe Marsh, role: paralegal, home: leeds}
+  - {key: dev, alias: dev.anand, display: Dev Anand, role: admin, home: leeds}
+infra: {}
+scripts:
+  - start: "2026-10-20T10:15:00Z"
+    actor: benign
+    steps:
+      - {id: new_phone_mfa, at: "+0m", do: mfa_register, user: maya, from: baseline,
+         method: "Microsoft Authenticator app", detail: "User registered Authenticator App with Notification and Code"}
+      - {id: new_phone_signin, at: "+6m", do: signin, user: maya, from: baseline, ua: iphone_outlook,
+         app: outlook_mobile, resource: exchange, client_app: "Mobile Apps and Desktop clients", session: newphone,
+         mfa_detail: "MFA completed in Azure AD"}
+exports:
+  - {format: entra_signin_csv, which: interactive, path: "InteractiveSignIns_2026-09-23_2026-10-23.csv"}
+  - {format: entra_signin_csv, which: noninteractive, path: "NonInteractiveSignIns_2026-09-23_2026-10-23.csv"}
+  - {format: purview_ual_csv, path: "AuditLog_maya.csv"}
+truth:
+  compromise_start: null
+  window_start: "2026-10-12T00:00:00Z"
+  allowed_findings:
+    - {rule: TT-SIGNIN-001, max_confidence: possible}
+    - {rule: TT-SIGNIN-003, max_confidence: possible}
+    - {rule: TT-AUTH-001, max_confidence: possible}
+  pivot_users: []
+  expected_gaps: []

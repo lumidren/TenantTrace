@@ -1,0 +1,42 @@
+id: attack_legacy_forwarding
+title: "Password spray, legacy IMAP sign-in without MFA, external mailbox forwarding"
+kind: attack
+seed: 7341
+tenant: {name: Northgate Dental Group, domain: northgate.example}
+period: {start: "2026-09-09T16:00:00Z", end: "2026-10-09T16:00:00Z"}
+collected_at: "2026-10-09T16:00:00Z"
+primary_user: lena
+users:
+  - {key: lena, alias: lena.brook, display: Lena Brook, role: practice_manager, home: manchester}
+  - {key: owen, alias: owen.pryce, display: Owen Pryce, role: dentist, home: manchester}
+  - {key: aisha, alias: aisha.noor, display: Aisha Noor, role: reception, home: manchester}
+  - {key: jack, alias: jack.dunmore, display: Jack Dunmore, role: admin, home: leeds}
+  - {key: ruth, alias: ruth.calloway, display: Ruth Calloway, role: finance, home: manchester}
+infra:
+  atk_spray: {ip: 203.0.113.120, location: frankfurt}
+  atk_imap: {ip: 203.0.113.121, location: frankfurt}
+scripts:
+  - start: "2026-09-29T02:10:00Z"
+    actor: attacker
+    steps:
+      - {id: spray, at: "+0m", do: spray, from: atk_spray, users: [lena, owen, aisha, ruth], rounds: 4,
+         client_app: "Other clients", expect: [TT-SIGNIN-006]}
+      - {id: imap_success, at: "+125m", do: signin, user: lena, from: atk_spray, ua: imap, client_app: IMAP4,
+         app: owa, resource: exchange, interactive: false, auth_requirement: singleFactorAuthentication,
+         mfa_detail: "", session: atk1, expect: [TT-SIGNIN-004, TT-SIGNIN-001]}
+      - {id: owa_single_factor, at: "+140m", do: signin, user: lena, from: atk_spray, ua: attacker_linux,
+         client_app: Browser, app: office, auth_requirement: singleFactorAuthentication, mfa_detail: "",
+         session: atk2, expect: [TT-SIGNIN-005, TT-SIGNIN-003]}
+      - {id: forwarding, at: "+151m", do: exchange_cmdlet, user: lena, session: atk2, cmdlet: Set-Mailbox,
+         params: {ForwardingSmtpAddress: "smtp:lena.brook.records@mailbox-relay.example.net",
+                  DeliverToMailboxAndForward: "True"}, expect: [TT-MAIL-002]}
+      - {id: imap_sync, at: "+170m", do: mail_access, user: lena, session: atk1, access: Sync, events: 4, items: 120,
+         client_info: "Client=IMAP4", expect: [TT-MAIL-004]}
+exports:
+  - {format: ps_ual_csv, path: "ual/Search-UnifiedAuditLog_export.csv", encoding: utf-16-le, type_line: true}
+  - {format: entra_signin_csv, which: interactive, path: "signins/InteractiveSignIns_2026-09-09_2026-10-09.csv"}
+  - {format: entra_signin_csv, which: noninteractive, path: "signins/NonInteractiveSignIns_2026-09-09_2026-10-09.csv"}
+truth:
+  compromise_start: "2026-09-29T02:10:00Z"
+  pivot_users: [owen, aisha, ruth]
+  expected_gaps: []

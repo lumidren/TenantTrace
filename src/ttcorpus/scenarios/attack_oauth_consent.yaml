@@ -1,0 +1,46 @@
+id: attack_oauth_consent
+title: "Consent phishing: a malicious OAuth app gets mail access, a second user also consents"
+kind: attack
+seed: 99120
+tenant: {name: Brightwater Architects, domain: brightwater.example}
+period: {start: "2026-09-30T12:00:00Z", end: "2026-10-30T12:00:00Z"}
+collected_at: "2026-10-30T12:00:00Z"
+primary_user: olu
+users:
+  - {key: olu, alias: olu.adeyemi, display: Olu Adeyemi, role: partner, home: london}
+  - {key: ines, alias: ines.carvalho, display: Ines Carvalho, role: architect, home: london}
+  - {key: rhys, alias: rhys.morgan, display: Rhys Morgan, role: admin, home: london}
+  - {key: zara, alias: zara.whitlock, display: Zara Whitlock, role: finance, home: london}
+infra:
+  atk_app: {ip: 203.0.113.150, location: newyork}
+scripts:
+  - start: "2026-10-20T10:02:00Z"
+    actor: attacker
+    steps:
+      - {id: consent, at: "+0m", do: consent, user: olu, from: baseline,
+         app: {id: "7d1c3a90-4b2e-4f6a-9c11-5e2a8b7f0d42", name: "DocuReview Secure Viewer",
+               scopes: [Mail.ReadWrite, Mail.Send, Files.ReadWrite.All, offline_access, User.Read]},
+         expect: [TT-APP-001]}
+      - {id: app_mail_access, at: "+35m", do: app_mail_access, user: olu, from: atk_app, events: 8, items: 40,
+         app: {id: "7d1c3a90-4b2e-4f6a-9c11-5e2a8b7f0d42", name: "DocuReview Secure Viewer"},
+         expect: [TT-APP-002]}
+  - start: "2026-10-21T14:30:00Z"
+    actor: attacker
+    steps:
+      - {id: second_consent, at: "+0m", do: consent, user: ines, from: baseline, pivot: true,
+         app: {id: "7d1c3a90-4b2e-4f6a-9c11-5e2a8b7f0d42", name: "DocuReview Secure Viewer",
+               scopes: [Mail.ReadWrite, Mail.Send, Files.ReadWrite.All, offline_access, User.Read]}}
+      - {id: second_app_access, at: "+40m", do: app_mail_access, user: ines, from: atk_app, events: 3,
+         app: {id: "7d1c3a90-4b2e-4f6a-9c11-5e2a8b7f0d42", name: "DocuReview Secure Viewer"}}
+  - start: "2026-10-02T11:00:00Z"
+    actor: benign
+    steps:
+      - {id: benign_consent, at: "+0m", do: consent, user: zara, from: baseline,
+         app: {id: "2b8e6f14-90c3-4d55-8a7e-61f0c9d2b3a7", name: "Calendar Sync Helper",
+               scopes: [User.Read, openid, profile]}}
+exports:
+  - {format: extractor_suite, path: "Output"}
+truth:
+  compromise_start: "2026-10-20T10:02:00Z"
+  pivot_users: [ines]
+  expected_gaps: []

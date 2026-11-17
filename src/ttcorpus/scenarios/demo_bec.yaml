@@ -1,0 +1,66 @@
+id: demo_bec
+title: "Demo: AiTM phishing of a finance manager, MFA change, hiding rule, mailbox and file access"
+kind: attack
+seed: 20261028
+tenant: {name: Harbor Lane Logistics, domain: harborlane.example}
+period: {start: "2026-10-07T17:00:00Z", end: "2026-11-06T17:00:00Z"}
+collected_at: "2026-11-06T17:00:00Z"
+primary_user: dana
+users:
+  - {key: dana, alias: dana.whitfield, display: Dana Whitfield, role: finance, home: leeds}
+  - {key: marcus, alias: marcus.oyelaran, display: Marcus Oyelaran, role: finance, home: leeds}
+  - {key: priya, alias: priya.raman, display: Priya Raman, role: admin, home: leeds}
+  - {key: tom, alias: tom.ellery, display: Tom Ellery, role: sales, home: manchester, remote: true}
+  - {key: grace, alias: grace.kowal, display: Grace Kowal, role: operations, home: leeds}
+  - {key: sam, alias: sam.hartley, display: Sam Hartley, role: executive, home: london, remote: true}
+infra:
+  atk_aitm: {ip: 203.0.113.45, location: dallas}
+  atk_vps: {ip: 203.0.113.77, location: amsterdam}
+scripts:
+  - start: "2026-10-28T09:41:00Z"
+    actor: attacker
+    steps:
+      - {id: initial_access, at: "+0m", do: signin, user: dana, from: atk_aitm, ua: win_edge, session: atk1,
+         mfa_detail: "MFA completed in Azure AD", expect: [TT-SIGNIN-001, TT-SIGNIN-003]}
+      - {id: cookie_replay_noninteractive, at: "+12m", do: signin, user: dana, from: atk_vps, ua: attacker_linux,
+         session: atk1, interactive: false, app: outlook, resource: exchange,
+         client_app: "Mobile Apps and Desktop clients", count: 6, every: 50m}
+      - {id: cookie_replay, at: "+17m", do: signin, user: dana, from: atk_vps, ua: attacker_linux, session: atk1,
+         expect: [TT-SIGNIN-002]}
+      - {id: mfa_registration, at: "+25m", do: mfa_register, user: dana, session: atk1, expect: [TT-AUTH-001]}
+      - {id: hiding_rule, at: "+33m", do: inbox_rule, user: dana, session: atk1, name: "..",
+         params: {SubjectOrBodyContainsWords: "invoice;payment;remittance;bank details", MoveToFolder: "RSS Subscriptions",
+                  MarkAsRead: "True", StopProcessingRules: "True"},
+         expect: [TT-MAIL-001]}
+      - {id: mailbox_access, at: "+39m", do: mail_access, user: dana, session: atk1, events: 6, items: 25,
+         folders: ['\Inbox', '\Sent Items', '\Inbox\Suppliers'], expect: [TT-MAIL-004]}
+      - {id: bulk_download, at: "+64m", do: files, user: dana, session: atk1, count: 40, over: 12m,
+         expect: [TT-FILE-001]}
+      - {id: anonymous_links, at: "+78m", do: share, user: dana, session: atk1, count: 3,
+         operation: AnonymousLinkCreated, expect: [TT-FILE-002]}
+      - {id: internal_phish, at: "+109m", do: send, user: dana, session: atk1, to: [marcus, grace],
+         subject: "Updated remittance details - action needed"}
+  - start: "2026-10-29T08:12:00Z"
+    actor: attacker
+    steps:
+      - {id: second_victim, at: "+0m", do: signin, user: marcus, from: atk_aitm, ua: win_edge, session: atk2,
+         mfa_detail: "MFA completed in Azure AD", pivot: true}
+      - {id: second_victim_mail, at: "+9m", do: mail_access, user: marcus, session: atk2, events: 2, items: 15}
+  - start: "2026-10-30T13:05:00Z"
+    actor: attacker
+    steps:
+      - {id: return_visit, at: "+0m", do: signin, user: dana, from: atk_vps, ua: attacker_linux, session: atk1,
+         mfa_detail: "MFA requirement satisfied by claim in the token"}
+      - {id: return_mail_access, at: "+4m", do: mail_access, user: dana, session: atk1, events: 3, items: 20,
+         expect: [TT-MAIL-004]}
+      - {id: cover_tracks, at: "+20m", do: delete_mail, user: dana, session: atk1, operation: SoftDelete,
+         count: 2, folder: '\Sent Items'}
+exports:
+  - {format: entra_signin_json, which: interactive, path: "entra/InteractiveSignIns_2026-10-07_2026-11-06.json"}
+  - {format: purview_ual_csv, path: "purview/audit_log_search_2026-11-06.csv"}
+truth:
+  compromise_start: "2026-10-28T09:41:00Z"
+  pivot_users: [marcus]
+  expected_gaps:
+    - {source: entra_signin_noninteractive, kind: missing}
+  expected_not_assessable: [TT-SIGNIN-007]

@@ -1,0 +1,35 @@
+id: benign_admin_bulk
+title: "Benign: an IT administrator migrating files in bulk and granting shared mailbox access"
+kind: benign
+seed: 8080
+tenant: {name: Kestrel Freight, domain: kestrel.example}
+period: {start: "2026-10-13T18:00:00Z", end: "2026-11-12T18:00:00Z"}
+collected_at: "2026-11-12T18:00:00Z"
+primary_user: carl
+users:
+  - {key: ryan, alias: ryan.ashdown, display: Ryan Ashdown, role: logistics, home: leeds}
+  - {key: mei, alias: mei.tanaka, display: Mei Tanaka, role: logistics, home: leeds}
+  - {key: carl, alias: carl.jensen, display: Carl Jensen, role: admin, home: leeds, file_activity: 3.0}
+  - {key: fiona, alias: fiona.drake, display: Fiona Drake, role: finance, home: london}
+infra: {}
+scripts:
+  - start: "2026-11-09T10:00:00Z"
+    actor: benign
+    steps:
+      - {id: migration_downloads, at: "+0m", do: files, user: carl, from: baseline, count: 120, over: 90m,
+         operation: FileDownloaded}
+      - {id: shared_mailbox_access, at: "+120m", do: exchange_cmdlet, user: carl, from: baseline, target: mei,
+         cmdlet: Add-MailboxPermission, params: {User: fiona.drake@kestrel.example, AccessRights: FullAccess,
+         InheritanceType: All}, client_info: "Client=Exchange PowerShell"}
+exports:
+  - {format: entra_signin_json, which: interactive, path: "entra_interactive.json"}
+  - {format: entra_signin_json, which: noninteractive, path: "entra_noninteractive.json"}
+  - {format: purview_ual_csv_v2, path: "ual.csv"}
+truth:
+  compromise_start: null
+  window_start: "2026-11-02T00:00:00Z"
+  allowed_findings:
+    - {rule: TT-FILE-001, max_confidence: possible}
+    - {rule: TT-MAIL-003, max_confidence: possible}
+  pivot_users: []
+  expected_gaps: []
