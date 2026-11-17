@@ -31,7 +31,7 @@ scripts:
          params: {ForwardingSmtpAddress: "smtp:lena.brook.records@mailbox-relay.example.net",
                   DeliverToMailboxAndForward: "True"}, expect: [TT-MAIL-002]}
       - {id: imap_sync, at: "+170m", do: mail_access, user: lena, session: atk1, access: Sync, events: 4, items: 120,
-         client_info: "Client=IMAP4", expect: [TT-MAIL-004]}
+         client_info: "Client=IMAP4", expect: [TT-MAIL-004, TT-MAIL-005]}
 exports:
   - {format: ps_ual_csv, path: "ual/Search-UnifiedAuditLog_export.csv", encoding: utf-16-le, type_line: true}
   - {format: entra_signin_csv, which: interactive, path: "signins/InteractiveSignIns_2026-09-09_2026-10-09.csv"}

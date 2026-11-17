@@ -476,13 +476,14 @@ def step_spray(w: World, t: datetime, step: dict[str, Any], block: dict[str, Any
     for r in range(rounds):
         for j, user in enumerate(users):
             dev = _device_for(w, user, {"ua": step.get("ua", "python")})
-            add_signin(w, t=t + timedelta(minutes=30 * r, seconds=7 * j), user=user, ip=ep["ip"], loc=ep["loc"],
-                       device=dev, app=APPS["office"], resource=RESOURCES["office"],
-                       client_app=step.get("client_app", "Other clients"), interactive=True, success=False,
-                       error_code=50126,
-                       failure_reason="Error validating credentials due to invalid username or password.",
-                       auth_requirement="singleFactorAuthentication", mfa_detail="",
-                       tags=_tags(step, block))
+            s = add_signin(w, t=t + timedelta(minutes=30 * r, seconds=7 * j), user=user, ip=ep["ip"],
+                           loc=ep["loc"], device=dev, app=APPS["office"], resource=RESOURCES["office"],
+                           client_app=step.get("client_app", "Other clients"), interactive=True, success=False,
+                           error_code=50126,
+                           failure_reason="Error validating credentials due to invalid username or password.",
+                           auth_requirement="singleFactorAuthentication", mfa_detail="",
+                           tags=_tags(step, block))
+            _mirror_logon(w, s)
 
 
 def step_mfa_register(w: World, t: datetime, step: dict[str, Any], block: dict[str, Any]) -> None:

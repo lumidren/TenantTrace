@@ -263,10 +263,21 @@ def ground_truth(w: World, spec: dict[str, Any], files: list[dict[str, Any]]) ->
     }
 
 
+def _long(p: Path) -> Path:
+    """Extended-length paths on Windows: collector layouts nest folders deeply."""
+    import os
+
+    if os.name != "nt":
+        return p
+    prefix = "\\\\?\\"
+    s = str(p.resolve())
+    return Path(s if s.startswith(prefix) else prefix + s)
+
+
 def generate(sid: str, out_root: Path) -> dict[str, Any]:
     spec = load_scenario(sid)
     w = simulate(spec)
-    case_dir = Path(out_root) / sid
+    case_dir = _long(Path(out_root)) / sid
     exports = case_dir / "exports"
     if exports.exists():
         for p in sorted(exports.rglob("*"), reverse=True):

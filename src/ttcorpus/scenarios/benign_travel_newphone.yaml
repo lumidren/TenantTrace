@@ -33,5 +33,6 @@ truth:
     - {rule: TT-SIGNIN-001, max_confidence: possible}
     - {rule: TT-SIGNIN-003, max_confidence: possible}
     - {rule: TT-AUTH-001, max_confidence: possible}
+    - {rule: TT-SIGNIN-007, max_confidence: possible}
   pivot_users: []
   expected_gaps: []

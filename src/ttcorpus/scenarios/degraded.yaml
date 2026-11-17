@@ -9,10 +9,12 @@ variants:
       expected_gaps:
         - {source: entra_signin_interactive, kind: missing}
         - {source: entra_signin_noninteractive, kind: missing}
+      # the spray is still visible through the audit log's copies of the failed and successful logons,
+      # which also lets mail access be linked to the spraying address
       expected_not_assessable: [TT-SIGNIN-001, TT-SIGNIN-002, TT-SIGNIN-003, TT-SIGNIN-004, TT-SIGNIN-005,
-                                TT-SIGNIN-006, TT-SIGNIN-007]
+                                TT-SIGNIN-007]
       drop_expected_rules: [TT-SIGNIN-001, TT-SIGNIN-002, TT-SIGNIN-003, TT-SIGNIN-004, TT-SIGNIN-005,
-                            TT-SIGNIN-006, TT-SIGNIN-007]
+                            TT-SIGNIN-007]
   - id: degraded_ual_truncated
     base: attack_legacy_forwarding
     title: "Legacy/forwarding attack with the audit log export cut off before the attack ended"
