@@ -129,7 +129,14 @@ def analyze(case: Case, user: str | None = None, window_start: str | None = None
     cov = case.read_json("coverage.json") or coverage(case)
     log = case.log
     with CaseStore(case.db_path) as store:
+        ipdb = None
+        if params.get("ipdb"):
+            from tenanttrace.geo import enrich
+
+            ipdb = enrich(store, params["ipdb"], log)
         result = run_analysis(store, params, cov, log)
+        if ipdb:
+            result["ipdb"] = ipdb
     case.write_json("analysis.json", result)
     # rule capability feeds back into the gap analysis
     if result.get("capability"):

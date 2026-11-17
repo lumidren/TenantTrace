@@ -158,6 +158,11 @@ def executive_summary(case_p: dict[str, Any], cov: dict[str, Any], an: dict[str,
     if na:
         limits.append("These checks could not be made with the supplied logs, so their absence of findings means "
                       "nothing: " + "; ".join(f"{c['rule_id']} ({c['title']}): {c['reasons'][0]}" for c in na))
+    ipdb = an.get("ipdb")
+    if ipdb and ipdb.get("events_enriched"):
+        limits.append(f"Locations for {ipdb['events_enriched']} record(s) the logs gave no location for come from the "
+                      f"analyst's offline IP database {Path(ipdb['file']).name} (SHA-256 {ipdb['sha256'][:16]}...), "
+                      "not from Microsoft's logs; such records are marked 'ipdb' as their location source.")
     unverified = cov.get("reference", {}).get("unverified_entries", [])
     if unverified:
         limits.append("Some facts in the gap reference table are not yet verified against Microsoft documentation "
