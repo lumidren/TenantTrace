@@ -32,6 +32,10 @@ processing log show which parser was chosen and how many records were not recogn
 | F16 | `TargetUserOrGroupType` values include `Member`, `Guest`, `Group`, `Partner`, `SharePointGroup`, `SecurityGroup`. | external-sharing check | sharing records | [1f-3] External is decided from the target's domain, not only this field. |
 | F17 | Microsoft-Extractor-Suite `Get-UAL -Output JSON` writes wrapper objects with `CreationDate` as `/Date(ms)/` (Windows PowerShell 5.1) in UTF-8 with BOM; sign-in pages are appended to one file as concatenated arrays. | parsers `ual_json`, `entra_signin_json` | a collector output folder | [collectors 1.3, 1.4] Reader accepts concatenated arrays, JSON Lines and single objects. |
 
+| F18 | Hawk's `Simple_` and `Converted_Authentication_Logs` CSVs flatten AuditData with the documented leading columns, render nested objects as `@{Key=Value; ...}` or `System.Object[]`, and put ExtendedProperties pairs (UserAgent, RequestType, ...) in their own columns. | parser `ual_flat_csv` | a Hawk run's per-user folder | [collectors 2.2, 2.3] Read from Hawk's source, never run. Column sets vary by run. |
+| F19 | Hawk's raw files (`MailItemsAccessed_<UPN>.json`, `ExchangeItem_Logs_*`, `User_Changes_*`) are ConvertTo-Json of Search-UnifiedAuditLog objects with AuditData as a string. | parser `ual_json` | the same folder | [collectors 2.1] |
+| F20 | Microsoft-Extractor-Suite's JSONL and SOF-ELK outputs are read by the JSON reader (one object per line, AuditData as a string or object), but the corpus only generates its JSON layout. | parser `ual_json` | a `Get-UAL -Output JSONL` and `-Output SOF-ELK` run | [collectors 1.3] |
+
 ## Reference table facts
 
 | # | Entry (`gap_reference.yaml`) | Unverified statement |

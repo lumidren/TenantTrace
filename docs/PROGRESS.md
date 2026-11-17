@@ -11,7 +11,7 @@ Resume here after a context reset: read this file, then `git log --oneline`.
 - [x] 5. Detection
 - [x] 6. Timeline and pivot
 - [x] 7. Report
-- [ ] 8. Evaluation and ship
+- [x] 8. Evaluation and ship
 
 ## Verified
 
@@ -77,15 +77,54 @@ Resume here after a context reset: read this file, then `git log --oneline`.
   zero network requests. Screenshots in docs/screenshots/.
 - The PDF layout was checked by text extraction only (no PDF renderer is installed here).
 
+- Phase 8: `tteval` reruns the whole evaluation and rewrites eval/results.md and results.json
+  (13 scenarios: 56/56 expected findings, 0 false positives, 16/16 not assessable, 14/14 gaps,
+  12/12 pivot accounts). Performance run (scripts/perf_run.py, docs/PERFORMANCE.md): 1,002,149
+  records, 115.6 s total, peak 56 MB. Hawk added as the second collector (generator layout, flattened
+  CSV parser, per-user scope recognised by the gap analysis). Offline IP database option. Hostile
+  input: empty, binary and text files, truncated JSON, malformed rows, UTF-16 without BOM,
+  Windows-1252, offsets across the UK clock change, an account absent from every log, a changed
+  input at report time. scripts/demo.ps1 ran on a fresh local clone (34 s, venv setup included)
+  and a non-editable `pip install .` ran the demo pipeline.
+
+## Status: finished
+
+All eight phases are done; 136 tests pass locally.
+
+## Not verified, or tested on generated data only
+
+- Every detection, gap and pivot result comes from generated data. No real tenant export was
+  available; `samples/real/` was empty. docs/VERIFY.md lists the format assumptions to check first.
+- The CI workflow (.github/workflows/ci.yml) has never run: there is no git remote, so nothing was
+  pushed. Its three jobs (tests on Windows and Linux, template rebuild check, browser click-through)
+  were each run locally in equivalent form.
+- The PDF was checked by extracting its text (pypdf), not by looking at rendered pages: no PDF
+  renderer is installed here and headless Edge does not render PDFs.
+- The rebuilt report template was compared only on this Windows machine; the CI job will confirm
+  that a Linux build produces the same bytes.
+- Hawk and Microsoft-Extractor-Suite layouts were read from their source code, never run.
+
+## Skipped, and why
+
+- Entra audit log CSV download and the sign-in "authentication details" CSVs: their columns are
+  undocumented (formats 2a-3, 2c); only the Graph JSON of the audit log is parsed.
+- CISA Untitled Goose Tool: a third collector was beyond "a second collector if time allows".
+- invictus-ir/o365_dataset (real BEC records): a 7z archive of real incident data that needs
+  extraction tools and a privacy review.
+- Pushing: no `origin` remote exists; commits are local only.
+
 ## Next
 
-- Phase 8: evaluation results table committed, performance run (1M events), DST and other
-  hostile-input checks, demo.ps1, README, final docs.
+1. Run TenantTrace on real exports (Purview CSV, a PowerShell export, the Entra JSON and CSV
+   downloads, an Extractor-Suite and a Hawk folder) and work through docs/VERIFY.md.
+2. Push to a remote so the CI workflow runs, including the Linux template-equality check.
+3. Have an investigator review rule thresholds and confidence criteria against real cases.
 
-## Drafted ahead (uncommitted until their phase)
+## Note on build order
 
-- Rule engine, rule YAML files, baseline, pivot, timeline, coverage analysis and the gap
-  reference table were drafted while research ran; they are committed with phases 4 to 6.
+The rule engine, rule files, baseline, pivot, timeline and coverage code were drafted while the
+format research ran, but each was committed with its own phase (4 to 6) after that phase's tests
+passed.
 
 ## Environment notes
 
