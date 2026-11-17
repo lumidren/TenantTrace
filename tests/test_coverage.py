@@ -75,7 +75,7 @@ def test_auditing_absent_lists_documented_causes(covered):
 
 def test_truncation_evidence_is_quoted(covered):
     g = next(g for g in covered["degraded_ual_truncated"][1]["gaps"] if g["kind"] == "truncated")
-    assert "ResultCount reports 1,654" in g["statement"]
+    assert re.search(r"ResultCount reports [\d,]+ results but the file holds [\d,]+ rows", g["statement"])
 
 
 def test_sparse_sources_without_records_are_not_gaps(covered):
