@@ -89,19 +89,16 @@ Resume here after a context reset: read this file, then `git log --oneline`.
 
 ## Status: finished
 
-All eight phases are done; 136 tests pass locally.
+All eight phases are done; 136 tests pass locally. The repository is on GitHub
+(lumidren/TenantTrace, branch `main`) and the first CI run, on 2026-11-17, passed all four
+jobs: tests on Windows and Linux, the template rebuild check and the browser click-through.
 
 ## Not verified, or tested on generated data only
 
 - Every detection, gap and pivot result comes from generated data. No real tenant export was
   available; `samples/real/` was empty. docs/VERIFY.md lists the format assumptions to check first.
-- The CI workflow (.github/workflows/ci.yml) has never run: there is no git remote, so nothing was
-  pushed. Its three jobs (tests on Windows and Linux, template rebuild check, browser click-through)
-  were each run locally in equivalent form.
 - The PDF was checked by extracting its text (pypdf), not by looking at rendered pages: no PDF
   renderer is installed here and headless Edge does not render PDFs.
-- The rebuilt report template was compared only on this Windows machine; the CI job will confirm
-  that a Linux build produces the same bytes.
 - Hawk and Microsoft-Extractor-Suite layouts were read from their source code, never run.
 
 ## Skipped, and why
@@ -111,14 +108,12 @@ All eight phases are done; 136 tests pass locally.
 - CISA Untitled Goose Tool: a third collector was beyond "a second collector if time allows".
 - invictus-ir/o365_dataset (real BEC records): a 7z archive of real incident data that needs
   extraction tools and a privacy review.
-- Pushing: no `origin` remote exists; commits are local only.
 
 ## Next
 
 1. Run TenantTrace on real exports (Purview CSV, a PowerShell export, the Entra JSON and CSV
    downloads, an Extractor-Suite and a Hawk folder) and work through docs/VERIFY.md.
-2. Push to a remote so the CI workflow runs, including the Linux template-equality check.
-3. Have an investigator review rule thresholds and confidence criteria against real cases.
+2. Have an investigator review rule thresholds and confidence criteria against real cases.
 
 ## Note on build order
 
@@ -129,4 +124,5 @@ passed.
 ## Environment notes
 
 - The `python` on PATH is a 32-bit 3.12. The project venv is built from the 64-bit 3.12 via `py -3.12 -m venv .venv`.
-- No git remote is configured; commits are local only.
+- `origin` is https://github.com/lumidren/TenantTrace. There is no `gh` CLI on this machine;
+  CI results can be read from the public GitHub Actions API.
