@@ -8,6 +8,7 @@ calls every parser's `sniff` on a sample of the file and picks the highest score
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -31,6 +32,7 @@ from tenanttrace.schema import Event
 UAL_PS_LIMITS = (5000, 10000, 50000)
 UAL_PURVIEW_LIMITS = (50000, 1000000)
 SIGNIN_DOWNLOAD_LIMIT = 100000
+BOM = chr(0xFEFF)
 AUDIT_DOWNLOAD_LIMIT = 250000
 
 
@@ -289,6 +291,101 @@ class UalJsonParser(Parser):
             st.emit(ev, item.raw, sub=item.note)
 
 
+EXTENDED_PROPERTY_COLUMNS = ("UserAgent", "RequestType", "ResultStatusDetail", "KeepMeSignedIn",
+                             "UserAuthenticationMethod")
+COLLECTOR_ENRICHMENT = ("CountryName", "KnownMicrosoftIP")
+_HASHTABLE = re.compile(r"^@\{(.*)\}$", re.S)
+
+
+def _parse_hashtable(text: str) -> dict[str, str]:
+    """PowerShell's rendering of a nested object in Export-Csv: @{Key=Value; Key=Value}."""
+    m = _HASHTABLE.match(text.strip())
+    if not m:
+        return {}
+    out = {}
+    for part in m.group(1).split(";"):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            out[k.strip()] = v.strip()
+    return out
+
+
+def rebuild_auditdata(header: list[str], row: list[str]) -> tuple[dict[str, Any], dict[str, str]]:
+    """Turn a flattened audit row (Hawk Simple_ / Converted_ files) back into an AuditData object."""
+    ad: dict[str, Any] = {}
+    params: list[dict[str, str]] = []
+    ext: list[dict[str, str]] = []
+    enrichment: dict[str, str] = {}
+    for col, val in zip(header, row):
+        if val == "":
+            continue
+        if col.startswith("Param_"):
+            params.append({"Name": col[6:], "Value": val})
+        elif col == "ParameterString":
+            continue
+        elif col == "AppAccessContext":
+            ad[col] = _parse_hashtable(val)
+        elif col in ("Actor", "Target"):
+            items = []
+            for part in val.split(";"):
+                ident, _, typ = part.rpartition(":")
+                if ident:
+                    items.append({"ID": ident, "Type": int(typ) if typ.isdigit() else typ})
+            ad[col] = items
+        elif col in EXTENDED_PROPERTY_COLUMNS:
+            ext.append({"Name": col, "Value": val})
+        elif col in COLLECTOR_ENRICHMENT:
+            enrichment[col] = val
+        elif val == "System.Object[]" or val.startswith("@{"):
+            continue   # nested data that Export-Csv could not flatten
+        elif col == "RecordType" and val.isdigit():
+            ad[col] = int(val)
+        else:
+            ad[col] = val
+    if params:
+        ad["Parameters"] = params
+    if ext:
+        ad["ExtendedProperties"] = ext
+    return ad, enrichment
+
+
+class UalFlatCsvParser(Parser):
+    id = "ual_flat_csv"
+    title = "Flattened unified audit log CSV (Hawk Simple_ and Converted_ files)"
+    container = "ual"
+
+    def sniff(self, s: Sample) -> tuple[int, str]:
+        if s.shape != "csv":
+            return 0, "not CSV"
+        h = set(s.header_lower)
+        if "auditdata" in h:
+            return 0, "has an AuditData column (not flattened)"
+        if {"creationtime", "operation"} <= h and ({"workload", "recordtype"} & h):
+            return 85, "flattened AuditData columns (CreationTime, Operation, Workload/RecordType) without AuditData"
+        return 0, "no flattened audit columns"
+
+    def parse(self, st: ParseState) -> None:
+        header: list[str] | None = None
+        st.notes.append("flattened records: nested fields that Export-Csv could not flatten are not available")
+        for row in iter_csv(st.path, st.enc):
+            if header is None:
+                header = [h.strip().lstrip(BOM) for h in row.fields]
+                continue
+            st.total += 1
+            if len(row.fields) != len(header):
+                st.reject(row.raw, "malformed", f"row has {len(row.fields)} fields, header has {len(header)}")
+                continue
+            ad, enrichment = rebuild_auditdata(header, row.fields)
+            try:
+                ev = normalize_auditdata(ad)
+            except UnrecognisedRecord as exc:
+                st.reject(row.raw, "unrecognised", str(exc))
+                continue
+            if enrichment:
+                ev.details["collector_enrichment"] = enrichment   # added by the collector, not by Microsoft
+            st.emit(ev, row.raw)
+
+
 # ----------------------------------------------------------------------------- Entra
 
 
@@ -437,6 +534,7 @@ PARSERS: list[Parser] = [
     UalCsvParser("ps_ual_csv", "Search-UnifiedAuditLog output saved with Export-Csv", True, UAL_PS_LIMITS),
     UalCsvParser("purview_ual_csv", "Microsoft Purview audit search export (CSV)", False, UAL_PURVIEW_LIMITS),
     UalJsonParser(),
+    UalFlatCsvParser(),
     EntraCsvParser(),
     EntraJsonParser(),
     AzureMonitorSigninParser(),
