@@ -16,7 +16,7 @@ select:
     - {not: {ctx: ip_in_baseline}}
     - {ctx: in_window}
 group: {by: [ip], within: 6h}
-summary: "Successful single-factor sign-in from {ip} ({geo_city}, {geo_country}) using {client_app}, an IP never seen for this account ({count} sign-in(s))"
+summary: "Successful single-factor sign-in from {ip}[[ ({geo_city}, {geo_country})]] using {client_app}, an IP never seen for this account ({count} sign-in(s))"
 why: >
   A sign-in that needed only a password, from an address the account never used, means MFA
   was not applied to it, whether by policy gap, exclusion or protocol. That is the path an

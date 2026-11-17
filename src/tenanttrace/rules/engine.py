@@ -244,8 +244,10 @@ class Finding:
         }
 
 
-def render(template: str, ev: Event, extra: dict[str, Any], n: int) -> str:
+def _render_plain(template: str, ev: Event, extra: dict[str, Any], n: int) -> tuple[str, bool]:
+    """Fill {placeholders}; return the text and whether every placeholder had a value."""
     out = []
+    complete = True
     i = 0
     while i < len(template):
         j = template.find("{", i)
@@ -265,8 +267,33 @@ def render(template: str, ev: Event, extra: dict[str, Any], n: int) -> str:
                 val = ""
         if isinstance(val, list):
             val = ", ".join(str(x) for x in val)
+        if val in (None, "", False):
+            complete = False if val is not False else complete
+        if val is True:
+            val = "yes"
+        elif val is False:
+            val = "no"
         out.append(str(val) if val not in (None, "") else "(not recorded)")
         i = k + 1
+    return "".join(out), complete
+
+
+def render(template: str, ev: Event, extra: dict[str, Any], n: int) -> str:
+    """Fill a summary template. A segment written as [[ ... ]] is left out entirely when any
+    placeholder inside it has no value, so summaries never print "(not recorded)" for optional parts."""
+    out = []
+    i = 0
+    while True:
+        j = template.find("[[", i)
+        if j < 0:
+            out.append(_render_plain(template[i:], ev, extra, n)[0])
+            break
+        k = template.find("]]", j)
+        out.append(_render_plain(template[i:j], ev, extra, n)[0])
+        seg, complete = _render_plain(template[j + 2:k], ev, extra, n)
+        if complete:
+            out.append(seg)
+        i = k + 2
     return "".join(out)
 
 

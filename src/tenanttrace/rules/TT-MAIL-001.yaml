@@ -20,7 +20,7 @@ select:
           contains_any_ci: [rss, archive, conversation history, junk, deleted items, notes, sync issues, outbox]
         - {all: [{field: details.mark_as_read, truthy: true}, {field: details.keywords, exists: true}]}
         - {field: details.rule_name, regex: "^[^A-Za-z0-9]{1,4}$"}
-summary: "Inbox rule \"{details.rule_name}\" ({operation}) from {ip}: keywords {details.keywords}; move to {details.move_to_folder}; mark read {details.mark_as_read}; delete {details.delete_message}; forward {details.forward_to}"
+summary: "Inbox rule \"{details.rule_name}\" ({operation}) from {ip}[[: messages containing {details.keywords}]][[; moved to {details.move_to_folder}]][[; marked as read: {details.mark_as_read}]][[; deleted: {details.delete_message}]][[; forwarded to {details.forward_to}]]"
 why: >
   In business email compromise the attacker hides replies from the real mailbox owner, so
   that a fraudulent payment conversation can continue unnoticed. Rules that move messages

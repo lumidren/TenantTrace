@@ -16,7 +16,7 @@ select:
     - {not: {ctx: ip_in_baseline}}
     - {ctx: in_window}
 group: {by: [ip], within: 12h}
-summary: "{count} non-interactive sign-in(s) (token use) from {ip} ({geo_city}, {geo_country}) for {app_name}, an IP never seen for this account"
+summary: "{count} non-interactive sign-in(s) (token use) from {ip}[[ ({geo_city}, {geo_country})]][[ for {app_name}]], an IP never seen for this account"
 why: >
   Non-interactive sign-ins are made by clients that already hold a token. When they come from
   an address the account never used, a stolen refresh token or session cookie is likely being

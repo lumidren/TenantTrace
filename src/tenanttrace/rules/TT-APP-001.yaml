@@ -20,7 +20,7 @@ select:
                       files.read.all, files.readwrite.all, sites.read.all, sites.readwrite.all,
                       full_access_as_user, ews.accessasuser.all, contacts.read, contacts.readwrite,
                       directory.readwrite.all, user.readwrite.all]
-summary: "Consent to \"{details.app_name}\" ({app_id}) with scopes {details.scopes} (admin consent: {details.is_admin_consent}) from {ip}"
+summary: "Consent to \"{details.app_name}\" ({app_id}) with scopes {details.scopes}[[ (admin consent: {details.is_admin_consent})]] from {ip}"
 why: >
   Consent phishing gets the victim to authorise an attacker-controlled application. The app
   then reads mail or files with its own tokens, which survive password resets and MFA

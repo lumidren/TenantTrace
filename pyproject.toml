@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pypdf>=4"]
 
 [project.scripts]
 tenanttrace = "tenanttrace.cli:main"

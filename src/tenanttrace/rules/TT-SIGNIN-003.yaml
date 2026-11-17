@@ -15,7 +15,7 @@ select:
     - {field: category, equals: signin}
     - {field: outcome, equals: success}
 deviation: {attribute: device}
-summary: "Successful sign-in from a device or client never seen before for this account ({device_os} {device_browser}; user agent {user_agent}) from {ip} ({count} sign-in(s))"
+summary: "Successful sign-in from a device or client never seen before for this account ([[{device_os} ]][[{device_browser}; ]]user agent {user_agent}) from {ip} ({count} sign-in(s))"
 why: >
   An attacker replaying stolen credentials or tokens signs in from their own machine or tool,
   which presents a device, operating system and client the account has never used.

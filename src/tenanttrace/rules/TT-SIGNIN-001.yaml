@@ -17,7 +17,7 @@ select:
     - {field: category, equals: signin}
     - {field: outcome, equals: success}
 deviation: {attribute: country}
-summary: "Successful sign-in from {geo_city}, {geo_country} ({ip}), a country never seen for this account before the compromise window ({count} sign-in(s))"
+summary: "Successful sign-in from [[{geo_city}, ]]{geo_country} ({ip}), a country never seen for this account before the compromise window ({count} sign-in(s))"
 why: >
   Attackers who obtain credentials or session tokens usually sign in from their own
   infrastructure, which rarely sits in the same country as the victim. A country that never

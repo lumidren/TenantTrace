@@ -11,7 +11,7 @@ sources:
 select:
   field: action
   in: [device.register, device.owner_add]
-summary: "{operation}: {details.device_name} from {ip}"
+summary: "{operation}[[: {details.device_name}]] from {ip}"
 why: >
   Registering a device in Entra ID lets an attacker obtain device-bound tokens and can satisfy
   conditional access policies that trust registered devices, which keeps access alive.

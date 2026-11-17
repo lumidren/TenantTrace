@@ -13,7 +13,7 @@ select:
   field: action
   in: [auth.security_info_registered, auth.security_info_changed, auth.security_info_deleted, auth.strong_auth_update]
 group: {by: [ip], within: 1h}
-summary: "{operation} ({details.method}) from {ip} ({count} record(s))"
+summary: "{operation}[[ ({details.method})]] from {ip} ({count} record(s))"
 why: >
   An attacker who has signed in once registers their own authenticator app or phone number so
   that they can pass MFA again after the session expires or the password is reset.

@@ -11,7 +11,7 @@ sources:
 select:
   field: action
   in: [mailbox.permission_add, mailbox.folder_permission_add, mailbox.recipient_permission_add, mailbox.send_on_behalf_add]
-summary: "{operation} on {target}: {details.grantee} granted {details.access_rights} (by {actor}, from {ip})"
+summary: "{operation} on {target}: {details.grantee} granted[[ {details.access_rights}]] (by {actor}, from {ip})"
 why: >
   Granting another identity read or send rights over a mailbox, or opening a folder to the
   organisation's Default user, gives an attacker continued access to the mail without needing
