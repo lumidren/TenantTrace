@@ -54,7 +54,7 @@ def ingest(input_dir: Path, case: Case, force: bool = False) -> dict[str, Any]:
             digest = sha256_file(path)
             file_id = store.add_file(rel, digest, size)
             log.write("hash", f"sha256 {digest} {rel}", size=size)
-            result = ingest_file(path, rel, file_id, store, log)
+            result = ingest_file(path, rel, file_id, digest, size, store, log)
             after = sha256_file(path)
             if after != digest:  # the input changed under us: never silently accept it
                 log.write("integrity", f"input changed during processing: {rel}", before=digest, after=after)
