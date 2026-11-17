@@ -1,4 +1,4 @@
-# TenantTrace
+﻿# TenantTrace
 
 **Offline investigation of Microsoft 365 business email compromise and account takeover, with a
 report you can defend.**
@@ -361,7 +361,7 @@ src/tenanttrace/    the tool: ingest/, coverage/, rules/ (YAML), reference/ (gap
 src/ttcorpus/       scenario generator and export writers (never imports the tool)
 src/tteval/         evaluation harness
 report-ui/          TypeScript source of the HTML report template
-tests/              135 tests: parsers, gaps, every rule, timeline, report, determinism, offline
+tests/              136 tests: parsers, gaps, every rule, timeline, report, determinism, offline
 docs/               DECISIONS, PROGRESS, CONFIDENCE, VERIFY, PERFORMANCE, sources/, screenshots/
 scripts/            demo.ps1, perf_run.py, verify_report_browser.mjs
 ```
