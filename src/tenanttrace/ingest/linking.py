@@ -37,11 +37,19 @@ def link_events(store: CaseStore, log: ProcessingLog) -> dict[str, Any]:
     conn = store.conn
     conn.execute("UPDATE events SET link_group='', link_role='', link_basis=''")
     dup = 0
+    # find repeated record IDs in SQL first, so a multi-million-record case never holds every ID in memory
+    family = "CASE WHEN source LIKE 'ual\\_%' ESCAPE '\\' THEN 'ual' ELSE source END"
+    conn.execute("CREATE INDEX IF NOT EXISTS ix_events_record_link ON events(record_id)")
+    repeated = conn.execute(
+        f"SELECT {family} AS fam, record_id FROM events WHERE record_id != '' "
+        "GROUP BY fam, record_id HAVING COUNT(*) > 1").fetchall()
     groups: dict[tuple[str, str], list[tuple[str, str, str, int, int]]] = defaultdict(list)
-    for eid, source, rid, ts, outcome, fid, line in conn.execute(
-            "SELECT event_id, source, record_id, ts_utc, outcome, file_id, line_start FROM events "
-            "WHERE record_id != '' ORDER BY file_id, line_start, col_start"):
-        groups[(_family(source), rid)].append((eid, ts, outcome, fid, line))
+    for fam, rid in repeated:
+        for eid, source, ts, outcome, fid, line in conn.execute(
+                "SELECT event_id, source, ts_utc, outcome, file_id, line_start FROM events WHERE record_id = ? "
+                "ORDER BY file_id, line_start, col_start", (rid,)):
+            if _family(source) == fam:
+                groups[(fam, rid)].append((eid, ts, outcome, fid, line))
     updates = []
     for (fam, rid), rows in groups.items():
         if len(rows) < 2:
