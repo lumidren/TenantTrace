@@ -20,6 +20,7 @@ dev = ["pytest>=8"]
 [project.scripts]
 tenanttrace = "tenanttrace.cli:main"
 ttcorpus = "ttcorpus.cli:main"
+tteval = "tteval.evaluate:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
