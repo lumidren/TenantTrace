@@ -22,3 +22,47 @@ jobs:
           python -m pip install -e ".[dev]"
       - name: Test
         run: python -m pytest -q
+
+  report-template:
+    # The HTML template is committed inside the Python package so users never need Node.
+    # Rebuild it from report-ui/ and fail if the committed copy differs from its source.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Build template
+        working-directory: report-ui
+        run: |
+          npm ci
+          npm run build
+      - name: Committed template matches its source
+        run: git diff --exit-code -- src/tenanttrace/report/template.html
+
+  report-browser:
+    # Open the demo report from disk in the runner's Chrome with networking disabled,
+    # click a finding down to its raw record and check keyboard access.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install
+        run: python -m pip install -e .
+      - name: Demo case
+        run: |
+          ttcorpus generate --out "$RUNNER_TEMP/corpus" demo_bec
+          tenanttrace -q run "$RUNNER_TEMP/corpus/demo_bec/exports" --user dana.whitfield@harborlane.example \
+            --case "$RUNNER_TEMP/case" --collected-at 2026-11-06T17:00:00Z
+      - name: Click through the report offline
+        run: |
+          set +e
+          node scripts/verify_report_browser.mjs "$RUNNER_TEMP/case/report/report.html" "$RUNNER_TEMP/clickthrough.png"
+          code=$?
+          if [ "$code" = "2" ]; then echo "no browser on this runner; skipped"; exit 0; fi
+          exit $code
