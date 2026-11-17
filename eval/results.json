@@ -1,0 +1,1043 @@
+{
+  "tool_version": "0.1.0",
+  "versions": {
+    "tool": "TenantTrace 0.1.0",
+    "schema": "1.0",
+    "ruleset": "2026.11.3",
+    "reference_table": "2026.11.17-1"
+  },
+  "summary": {
+    "scenarios": 13,
+    "expected_findings": 56,
+    "expected_findings_detected": 56,
+    "false_positives_attack_and_degraded": 0,
+    "false_positives_benign": 0,
+    "allowed_benign_findings": 8,
+    "related_findings": 12,
+    "not_assessable_expected": 16,
+    "not_assessable_reported": 16,
+    "gaps_expected": 14,
+    "gaps_reported": 14,
+    "unexpected_gaps": 0,
+    "pivot_expected": 12,
+    "pivot_found": 12,
+    "pivot_extra": 0
+  },
+  "scenarios": [
+    {
+      "scenario": "attack_legacy_forwarding",
+      "kind": "attack",
+      "title": "Password spray, legacy IMAP sign-in without MFA, external mailbox forwarding",
+      "window": {
+        "anchor_event": "E3d2b0944e4ea471b3411738",
+        "anchor_rule": "TT-SIGNIN-006",
+        "basis": "earliest baseline-independent indicator (TT-SIGNIN-006 at 2026-09-29T02:10:00.000000Z) minus 72 hours",
+        "method": "estimated",
+        "start": "2026-09-26T02:10:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-SIGNIN-006",
+          "truth_id": "spray",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-SIGNIN-004",
+          "truth_id": "imap_success",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-001",
+          "truth_id": "imap_success",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-005",
+          "truth_id": "owa_single_factor",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "truth_id": "owa_single_factor",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-MAIL-002",
+          "truth_id": "forwarding",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-MAIL-004",
+          "truth_id": "imap_sync",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-MAIL-005",
+          "truth_id": "imap_sync",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "confirmed"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [
+        {
+          "rule": "TT-SIGNIN-003",
+          "level": "probable",
+          "summary": "Successful sign-in from a device or client never seen before for this account (user agent IMAP4 client) from 203.0.113.120 (1 sign-in(s))"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "level": "probable",
+          "summary": "1 non-interactive sign-in(s) (token use) from 203.0.113.120 (Frankfurt am Main, DE) for Office 365 Exchange Online, an IP never seen for this account"
+        }
+      ],
+      "allowed_findings": [],
+      "not_assessable": [],
+      "gaps": [],
+      "unexpected_gaps": [],
+      "pivot": [
+        {
+          "account": "owen.pryce@northgate.example",
+          "found": true
+        },
+        {
+          "account": "aisha.noor@northgate.example",
+          "found": true
+        },
+        {
+          "account": "ruth.calloway@northgate.example",
+          "found": true
+        }
+      ],
+      "extra_pivot": [],
+      "findings_total": 10,
+      "seconds": 0.83
+    },
+    {
+      "scenario": "attack_oauth_consent",
+      "kind": "attack",
+      "title": "Consent phishing: a malicious OAuth app gets mail access, a second user also consents",
+      "window": {
+        "anchor_event": "E322356fc9cbe2445ab144f0",
+        "anchor_rule": "TT-APP-001",
+        "basis": "earliest baseline-independent indicator (TT-APP-001 at 2026-10-20T10:02:00.000000Z) minus 72 hours",
+        "method": "estimated",
+        "start": "2026-10-17T10:02:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-APP-001",
+          "truth_id": "consent",
+          "user": "olu.adeyemi@brightwater.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-APP-002",
+          "truth_id": "app_mail_access",
+          "user": "olu.adeyemi@brightwater.example",
+          "detected": true,
+          "level": "confirmed"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [],
+      "allowed_findings": [],
+      "not_assessable": [],
+      "gaps": [],
+      "unexpected_gaps": [],
+      "pivot": [
+        {
+          "account": "ines.carvalho@brightwater.example",
+          "found": true
+        }
+      ],
+      "extra_pivot": [],
+      "findings_total": 2,
+      "seconds": 0.64
+    },
+    {
+      "scenario": "attack_travel_delegate",
+      "kind": "attack",
+      "title": "Impossible travel from a new device, device registration, folder permission and external sharing",
+      "window": {
+        "basis": "no anchor indicator found; the last 14 days before collection",
+        "method": "default",
+        "start": "2026-10-29T18:00:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-SIGNIN-002",
+          "truth_id": "foreign_signin",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-001",
+          "truth_id": "foreign_signin",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "truth_id": "foreign_signin",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "truth_id": "token_refresh",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-AUTH-002",
+          "truth_id": "device_registration",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-MAIL-003",
+          "truth_id": "folder_permission",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-FILE-002",
+          "truth_id": "external_share",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "confirmed"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [
+        {
+          "rule": "TT-SIGNIN-002",
+          "level": "probable",
+          "summary": "Sign-ins from Singapore, SG and Leeds, GB: 10886 km apart within 0.19 h (about 58318 km/h)"
+        }
+      ],
+      "allowed_findings": [],
+      "not_assessable": [],
+      "gaps": [],
+      "unexpected_gaps": [],
+      "pivot": [],
+      "extra_pivot": [],
+      "findings_total": 8,
+      "seconds": 0.61
+    },
+    {
+      "scenario": "benign_admin_bulk",
+      "kind": "benign",
+      "title": "Benign: an IT administrator migrating files in bulk and granting shared mailbox access",
+      "window": {
+        "basis": "supplied with --window-start",
+        "method": "analyst",
+        "start": "2026-11-02T00:00:00.000000Z"
+      },
+      "expected_findings": [],
+      "false_positives": [],
+      "related_findings": [],
+      "allowed_findings": [
+        {
+          "rule": "TT-FILE-001",
+          "level": "possible",
+          "summary": "121 file downloads within a burst starting at 2026-11-09T10:00:00.000000Z from 192.0.2.10 (threshold 15; the account's busiest 30 minutes before the window had 2)"
+        },
+        {
+          "rule": "TT-MAIL-003",
+          "level": "possible",
+          "summary": "Add-MailboxPermission on mei.tanaka@kestrel.example: fiona.drake@kestrel.example granted FullAccess (by carl.jensen@kestrel.example, from 192.0.2.10)"
+        }
+      ],
+      "not_assessable": [],
+      "gaps": [],
+      "unexpected_gaps": [],
+      "pivot": [],
+      "extra_pivot": [],
+      "findings_total": 2,
+      "seconds": 0.67
+    },
+    {
+      "scenario": "benign_forwarding_vpn",
+      "kind": "benign",
+      "title": "Benign: an internal forwarding rule and a user who always connects through a VPN",
+      "window": {
+        "basis": "supplied with --window-start",
+        "method": "analyst",
+        "start": "2026-10-12T00:00:00.000000Z"
+      },
+      "expected_findings": [],
+      "false_positives": [],
+      "related_findings": [],
+      "allowed_findings": [],
+      "not_assessable": [],
+      "gaps": [],
+      "unexpected_gaps": [],
+      "pivot": [],
+      "extra_pivot": [],
+      "findings_total": 0,
+      "seconds": 0.63
+    },
+    {
+      "scenario": "benign_travel_newphone",
+      "kind": "benign",
+      "title": "Benign: a business trip to Madrid and a new phone registered for MFA",
+      "window": {
+        "basis": "supplied with --window-start",
+        "method": "analyst",
+        "start": "2026-10-12T00:00:00.000000Z"
+      },
+      "expected_findings": [],
+      "false_positives": [],
+      "related_findings": [],
+      "allowed_findings": [
+        {
+          "rule": "TT-SIGNIN-001",
+          "level": "possible",
+          "summary": "Successful sign-in from Madrid, ES (198.51.100.150), a country never seen for this account before the compromise window (34 sign-in(s))"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "level": "possible",
+          "summary": "8 non-interactive sign-in(s) (token use) from 198.51.100.150 (Madrid, ES) for Microsoft Office, an IP never seen for this account"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "level": "possible",
+          "summary": "8 non-interactive sign-in(s) (token use) from 198.51.100.150 (Madrid, ES) for Microsoft Office, an IP never seen for this account"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "level": "possible",
+          "summary": "7 non-interactive sign-in(s) (token use) from 198.51.100.150 (Madrid, ES) for Microsoft Office, an IP never seen for this account"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "level": "possible",
+          "summary": "7 non-interactive sign-in(s) (token use) from 198.51.100.150 (Madrid, ES) for Microsoft Office, an IP never seen for this account"
+        },
+        {
+          "rule": "TT-AUTH-001",
+          "level": "possible",
+          "summary": "User registered security info. (Microsoft Authenticator app) from 192.0.2.10 (1 record(s))"
+        }
+      ],
+      "not_assessable": [],
+      "gaps": [],
+      "unexpected_gaps": [],
+      "pivot": [],
+      "extra_pivot": [],
+      "findings_total": 6,
+      "seconds": 0.6
+    },
+    {
+      "scenario": "demo_bec",
+      "kind": "attack",
+      "title": "Demo: AiTM phishing of a finance manager, MFA change, hiding rule, mailbox and file access",
+      "window": {
+        "anchor_event": "E2171e7acb2c9c40baf77e8d",
+        "anchor_rule": "TT-MAIL-001",
+        "basis": "earliest baseline-independent indicator (TT-MAIL-001 at 2026-10-28T10:14:00.000000Z) minus 72 hours",
+        "method": "estimated",
+        "start": "2026-10-25T10:14:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-SIGNIN-001",
+          "truth_id": "initial_access",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "truth_id": "initial_access",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-002",
+          "truth_id": "cookie_replay",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-AUTH-001",
+          "truth_id": "mfa_registration",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-MAIL-001",
+          "truth_id": "hiding_rule",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-MAIL-004",
+          "truth_id": "mailbox_access",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-FILE-001",
+          "truth_id": "bulk_download",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-FILE-002",
+          "truth_id": "anonymous_links",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-MAIL-004",
+          "truth_id": "return_mail_access",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [
+        {
+          "rule": "TT-SIGNIN-002",
+          "level": "confirmed",
+          "summary": "Sign-ins from Leeds, GB and Dallas, US: 7445 km apart within 1.08 h (about 6904 km/h)"
+        },
+        {
+          "rule": "TT-SIGNIN-001",
+          "level": "confirmed",
+          "summary": "Successful sign-in from Amsterdam, NL (203.0.113.77), a country never seen for this account before the compromise window (2 sign-in(s))"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "level": "probable",
+          "summary": "Successful sign-in from a device or client never seen before for this account (Linux Chrome 126.0.0; user agent Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36) from 203.0.113.77 (2 sign-in(s))"
+        }
+      ],
+      "allowed_findings": [],
+      "not_assessable": [
+        {
+          "rule": "TT-SIGNIN-007",
+          "reported": true,
+          "reason": "required log source unavailable: entra_signin_noninteractive (not supplied)"
+        }
+      ],
+      "gaps": [
+        {
+          "source": "entra_signin_noninteractive",
+          "kind": "missing",
+          "reported": true
+        }
+      ],
+      "unexpected_gaps": [],
+      "pivot": [
+        {
+          "account": "marcus.oyelaran@harborlane.example",
+          "found": true
+        }
+      ],
+      "extra_pivot": [],
+      "findings_total": 12,
+      "seconds": 0.68
+    },
+    {
+      "scenario": "degraded_no_signins",
+      "kind": "degraded",
+      "title": "Legacy/forwarding attack with the sign-in logs not supplied",
+      "window": {
+        "anchor_event": "Ec6f209009bd014af82f7abe",
+        "anchor_rule": "TT-SIGNIN-006",
+        "basis": "earliest baseline-independent indicator (TT-SIGNIN-006 at 2026-09-29T02:10:00.000000Z) minus 72 hours",
+        "method": "estimated",
+        "start": "2026-09-26T02:10:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-SIGNIN-006",
+          "truth_id": "spray",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-MAIL-002",
+          "truth_id": "forwarding",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-MAIL-004",
+          "truth_id": "imap_sync",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-MAIL-005",
+          "truth_id": "imap_sync",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [],
+      "allowed_findings": [],
+      "not_assessable": [
+        {
+          "rule": "TT-SIGNIN-001",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-002",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-004",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-005",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "reported": true,
+          "reason": "required log source unavailable: entra_signin_noninteractive (not supplied)"
+        }
+      ],
+      "gaps": [
+        {
+          "source": "entra_signin_interactive",
+          "kind": "missing",
+          "reported": true
+        },
+        {
+          "source": "entra_signin_noninteractive",
+          "kind": "missing",
+          "reported": true
+        }
+      ],
+      "unexpected_gaps": [],
+      "pivot": [
+        {
+          "account": "owen.pryce@northgate.example",
+          "found": true
+        },
+        {
+          "account": "aisha.noor@northgate.example",
+          "found": true
+        },
+        {
+          "account": "ruth.calloway@northgate.example",
+          "found": true
+        }
+      ],
+      "extra_pivot": [],
+      "findings_total": 4,
+      "seconds": 0.6
+    },
+    {
+      "scenario": "degraded_ual_truncated",
+      "kind": "degraded",
+      "title": "Legacy/forwarding attack with the audit log export cut off before the attack ended",
+      "window": {
+        "anchor_event": "E05b0d68c241cb2c4e273e77",
+        "anchor_rule": "TT-SIGNIN-006",
+        "basis": "earliest baseline-independent indicator (TT-SIGNIN-006 at 2026-09-29T02:10:00.000000Z) minus 72 hours",
+        "method": "estimated",
+        "start": "2026-09-26T02:10:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-SIGNIN-006",
+          "truth_id": "spray",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-SIGNIN-004",
+          "truth_id": "imap_success",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-001",
+          "truth_id": "imap_success",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-005",
+          "truth_id": "owa_single_factor",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "truth_id": "owa_single_factor",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [
+        {
+          "rule": "TT-SIGNIN-003",
+          "level": "probable",
+          "summary": "Successful sign-in from a device or client never seen before for this account (user agent IMAP4 client) from 203.0.113.120 (1 sign-in(s))"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "level": "probable",
+          "summary": "1 non-interactive sign-in(s) (token use) from 203.0.113.120 (Frankfurt am Main, DE) for Office 365 Exchange Online, an IP never seen for this account"
+        }
+      ],
+      "allowed_findings": [],
+      "not_assessable": [],
+      "gaps": [
+        {
+          "source": "ual",
+          "kind": "truncated",
+          "reported": true
+        },
+        {
+          "source": "ual",
+          "kind": "ends_early",
+          "reported": true
+        }
+      ],
+      "unexpected_gaps": [],
+      "pivot": [
+        {
+          "account": "owen.pryce@northgate.example",
+          "found": true
+        },
+        {
+          "account": "aisha.noor@northgate.example",
+          "found": true
+        },
+        {
+          "account": "ruth.calloway@northgate.example",
+          "found": true
+        }
+      ],
+      "extra_pivot": [],
+      "findings_total": 7,
+      "seconds": 0.98
+    },
+    {
+      "scenario": "degraded_retention_7d",
+      "kind": "degraded",
+      "title": "Impossible-travel attack with sign-in logs limited to the last 7 days",
+      "window": {
+        "basis": "no anchor indicator found; the last 14 days before collection",
+        "method": "default",
+        "start": "2026-10-29T18:00:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-AUTH-002",
+          "truth_id": "device_registration",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-MAIL-003",
+          "truth_id": "folder_permission",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-FILE-002",
+          "truth_id": "external_share",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [],
+      "allowed_findings": [],
+      "not_assessable": [
+        {
+          "rule": "TT-SIGNIN-001",
+          "reported": true,
+          "reason": "the account's successful sign-ins before the compromise window reach back 0.0 day(s) (0 record(s)); this rule needs at least 14 days and 10 records of history to say what is unusual for the account; the early part of the compromise window is not covered: entra_signin_interactive starts 2026-11-06T08:17Z, entra_signin_noninteractive starts 2026-11-05T18:33Z; retention gap in entra_signin_interactive (2026-10-13 to 2026-11-06); retention gap in entra_signin_noninteractive (2026-10-13 to 2026-11-05)"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "reported": true,
+          "reason": "the account's successful sign-ins before the compromise window reach back 0.0 day(s) (0 record(s)); this rule needs at least 14 days and 10 records of history to say what is unusual for the account; the early part of the compromise window is not covered: entra_signin_interactive starts 2026-11-06T08:17Z, entra_signin_noninteractive starts 2026-11-05T18:33Z; retention gap in entra_signin_interactive (2026-10-13 to 2026-11-06); retention gap in entra_signin_noninteractive (2026-10-13 to 2026-11-05)"
+        }
+      ],
+      "gaps": [
+        {
+          "source": "entra_signin_interactive",
+          "kind": "retention",
+          "cause_contains": "7",
+          "reported": true
+        },
+        {
+          "source": "entra_signin_noninteractive",
+          "kind": "retention",
+          "cause_contains": "7",
+          "reported": true
+        }
+      ],
+      "unexpected_gaps": [],
+      "pivot": [],
+      "extra_pivot": [],
+      "findings_total": 3,
+      "seconds": 0.59
+    },
+    {
+      "scenario": "degraded_no_mailbox_audit",
+      "kind": "degraded",
+      "title": "Demo attack with mailbox auditing absent (no mailbox item records)",
+      "window": {
+        "anchor_event": "E70f06a369635782288f8afd",
+        "anchor_rule": "TT-MAIL-001",
+        "basis": "earliest baseline-independent indicator (TT-MAIL-001 at 2026-10-28T10:14:00.000000Z) minus 72 hours",
+        "method": "estimated",
+        "start": "2026-10-25T10:14:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-SIGNIN-001",
+          "truth_id": "initial_access",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "truth_id": "initial_access",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-002",
+          "truth_id": "cookie_replay",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-AUTH-001",
+          "truth_id": "mfa_registration",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-MAIL-001",
+          "truth_id": "hiding_rule",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-FILE-001",
+          "truth_id": "bulk_download",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-FILE-002",
+          "truth_id": "anonymous_links",
+          "user": "dana.whitfield@harborlane.example",
+          "detected": true,
+          "level": "confirmed"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [
+        {
+          "rule": "TT-SIGNIN-002",
+          "level": "confirmed",
+          "summary": "Sign-ins from Leeds, GB and Dallas, US: 7445 km apart within 1.08 h (about 6904 km/h)"
+        },
+        {
+          "rule": "TT-SIGNIN-001",
+          "level": "confirmed",
+          "summary": "Successful sign-in from Amsterdam, NL (203.0.113.77), a country never seen for this account before the compromise window (2 sign-in(s))"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "level": "probable",
+          "summary": "Successful sign-in from a device or client never seen before for this account (Linux Chrome 126.0.0; user agent Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36) from 203.0.113.77 (2 sign-in(s))"
+        }
+      ],
+      "allowed_findings": [],
+      "not_assessable": [
+        {
+          "rule": "TT-MAIL-004",
+          "reported": true,
+          "reason": "required log source unavailable: ual_mailbox_items (the export is present but holds none of these records: auditing appears to be off)"
+        }
+      ],
+      "gaps": [
+        {
+          "source": "entra_signin_noninteractive",
+          "kind": "missing",
+          "reported": true
+        },
+        {
+          "source": "ual_mailbox_items",
+          "kind": "auditing_absent",
+          "reported": true
+        }
+      ],
+      "unexpected_gaps": [],
+      "pivot": [
+        {
+          "account": "marcus.oyelaran@harborlane.example",
+          "found": true
+        }
+      ],
+      "extra_pivot": [],
+      "findings_total": 10,
+      "seconds": 0.51
+    },
+    {
+      "scenario": "degraded_quiet_period",
+      "kind": "degraded",
+      "title": "Impossible-travel attack with two working days missing from the audit log export",
+      "window": {
+        "basis": "no anchor indicator found; the last 14 days before collection",
+        "method": "default",
+        "start": "2026-10-29T18:00:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-SIGNIN-002",
+          "truth_id": "foreign_signin",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-001",
+          "truth_id": "foreign_signin",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "truth_id": "foreign_signin",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "truth_id": "token_refresh",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-AUTH-002",
+          "truth_id": "device_registration",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-MAIL-003",
+          "truth_id": "folder_permission",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "confirmed"
+        },
+        {
+          "rule": "TT-FILE-002",
+          "truth_id": "external_share",
+          "user": "ryan.ashdown@kestrel.example",
+          "detected": true,
+          "level": "confirmed"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [
+        {
+          "rule": "TT-SIGNIN-002",
+          "level": "probable",
+          "summary": "Sign-ins from Singapore, SG and Leeds, GB: 10886 km apart within 0.19 h (about 58318 km/h)"
+        }
+      ],
+      "allowed_findings": [],
+      "not_assessable": [],
+      "gaps": [
+        {
+          "source": "ual",
+          "kind": "quiet",
+          "reported": true
+        }
+      ],
+      "unexpected_gaps": [],
+      "pivot": [],
+      "extra_pivot": [],
+      "findings_total": 8,
+      "seconds": 0.8
+    },
+    {
+      "scenario": "collector_hawk_legacy",
+      "kind": "degraded",
+      "title": "Legacy/forwarding attack collected with Hawk for the one compromised user",
+      "window": {
+        "anchor_event": "E7be4c6cf5ca4f7c99e27935",
+        "anchor_rule": "TT-SIGNIN-006",
+        "basis": "earliest baseline-independent indicator (TT-SIGNIN-006 at 2026-09-29T02:10:00.000000Z) minus 72 hours",
+        "method": "estimated",
+        "start": "2026-09-26T02:10:00.000000Z"
+      },
+      "expected_findings": [
+        {
+          "rule": "TT-SIGNIN-006",
+          "truth_id": "spray",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-MAIL-002",
+          "truth_id": "forwarding",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-MAIL-004",
+          "truth_id": "imap_sync",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        },
+        {
+          "rule": "TT-MAIL-005",
+          "truth_id": "imap_sync",
+          "user": "lena.brook@northgate.example",
+          "detected": true,
+          "level": "probable"
+        }
+      ],
+      "false_positives": [],
+      "related_findings": [],
+      "allowed_findings": [],
+      "not_assessable": [
+        {
+          "rule": "TT-SIGNIN-001",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-002",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-003",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-004",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-005",
+          "reported": true,
+          "reason": "none of the log sources that record this are available: entra_signin_interactive (not supplied); entra_signin_noninteractive (not supplied)"
+        },
+        {
+          "rule": "TT-SIGNIN-007",
+          "reported": true,
+          "reason": "required log source unavailable: entra_signin_noninteractive (not supplied)"
+        }
+      ],
+      "gaps": [
+        {
+          "source": "entra_signin_interactive",
+          "kind": "missing",
+          "reported": true
+        },
+        {
+          "source": "entra_signin_noninteractive",
+          "kind": "missing",
+          "reported": true
+        },
+        {
+          "source": "ual_sharepoint",
+          "kind": "auditing_absent",
+          "reported": true
+        },
+        {
+          "source": "ual",
+          "kind": "filtered",
+          "reported": true
+        }
+      ],
+      "unexpected_gaps": [],
+      "pivot": [],
+      "extra_pivot": [],
+      "findings_total": 4,
+      "seconds": 0.72
+    }
+  ]
+}
