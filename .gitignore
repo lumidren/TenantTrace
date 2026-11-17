@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# Node (report UI source build)
+node_modules/
+report-ui/dist/
+
+# Case output and evidence: never commit
+cases/
+case/
+*.case/
+out/
+samples/real/
+corpus-out/
+eval/work/
+perf/work/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
