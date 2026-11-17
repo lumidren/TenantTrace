@@ -11,7 +11,7 @@ from typing import Any
 
 from tenanttrace import TOOL_NAME, __version__
 from tenanttrace.case import Case, Timer, file_mtime_utc, list_inputs, utc_now_iso
-from tenanttrace.hashing import sha256_file
+from tenanttrace.hashing import long_path, sha256_file
 from tenanttrace.schema import SCHEMA_VERSION
 from tenanttrace.store import CaseStore
 
@@ -36,18 +36,20 @@ def ingest(input_dir: Path, case: Case, force: bool = False) -> dict[str, Any]:
         raise NotADirectoryError(f"input folder not found: {input_dir}")
     if case.root == input_dir or input_dir in case.root.parents:
         raise ValueError("the case folder must not be inside the input folder")
+    shown_input = str(input_dir)
+    input_dir = long_path(input_dir)   # collector folders can exceed the classic Windows path limit
     case.create(force=force)
     log = case.log
     timer = Timer()
-    log.write("ingest", f"{TOOL_NAME} {__version__} starting ingest", input_dir=str(input_dir), versions=tool_versions())
+    log.write("ingest", f"{TOOL_NAME} {__version__} starting ingest", input_dir=shown_input, versions=tool_versions())
 
-    inputs = list_inputs(input_dir, exclude=case.root)
+    inputs = list_inputs(input_dir, exclude=long_path(case.root))
     log.write("ingest", f"found {len(inputs)} input file(s)")
 
     manifest_inputs: list[dict[str, Any]] = []
     with CaseStore(case.db_path) as store:
         store.bulk_mode()
-        store.set_meta("input_dir", str(input_dir))
+        store.set_meta("input_dir", shown_input)
         for path in inputs:
             rel = path.relative_to(input_dir).as_posix()
             size = path.stat().st_size
@@ -79,7 +81,7 @@ def ingest(input_dir: Path, case: Case, force: bool = False) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "versions": tool_versions(),
         "created_utc": utc_now_iso(),
-        "input_dir": str(input_dir),
+        "input_dir": shown_input,
         "inputs": manifest_inputs,
         "totals": _totals(manifest_inputs),
         "linking": link_summary,
