@@ -19,7 +19,8 @@ variants:
     degrade: {truncate_format: ps_ual_csv, keep_until: "2026-09-29T04:25:00Z"}
     truth:
       expected_gaps:
-        - {source: ual_exchange, kind: truncated}
+        - {source: ual, kind: truncated}
+        - {source: ual, kind: ends_early}
       drop_expected_truth_ids: [imap_sync]
   - id: degraded_retention_7d
     base: attack_travel_delegate
@@ -42,3 +43,10 @@ variants:
         - {source: ual_mailbox_items, kind: auditing_absent}
       expected_not_assessable: [TT-MAIL-004]
       drop_expected_rules: [TT-MAIL-004]
+  - id: degraded_quiet_period
+    base: attack_travel_delegate
+    title: "Impossible-travel attack with two working days missing from the audit log export"
+    degrade: {drop_window: {formats: [purview_ual_csv], from: "2026-10-20T00:00:00Z", to: "2026-10-22T00:00:00Z"}}
+    truth:
+      expected_gaps:
+        - {source: ual, kind: quiet}

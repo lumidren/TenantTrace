@@ -79,6 +79,12 @@ def _apply_degrade(spec: dict[str, Any], fmt: str, signins: list[SignIn], ops: l
         signins = [s for s in signins if s.t >= cutoff]
         ops = [o for o in ops if o.t >= cutoff]
         note["retention_days"] = ret
+    win = dg.get("drop_window")
+    if win and fmt in win.get("formats", []):
+        a, b = utc(win["from"]), utc(win["to"])
+        ops = [o for o in ops if not (a <= o.t < b)]
+        signins = [s for s in signins if not (a <= s.t < b)]
+        note["dropped_window"] = [win["from"], win["to"]]
     drop_ops = set(dg.get("drop_operations") or [])
     if drop_ops:
         ops = [o for o in ops if o.operation not in drop_ops]
