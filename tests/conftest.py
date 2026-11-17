@@ -24,3 +24,14 @@ def no_network(monkeypatch):
     monkeypatch.setattr(socket, "create_connection", deny("create_connection"))
     monkeypatch.setattr(socket, "getaddrinfo", deny("getaddrinfo"))
     return attempts
+
+
+@pytest.fixture(scope="session")
+def corpus_dir(tmp_path_factory):
+    """Generate every corpus scenario once per test session."""
+    from ttcorpus.generate import generate, list_scenarios
+
+    out = tmp_path_factory.mktemp("corpus")
+    for sid in list_scenarios():
+        generate(sid, out)
+    return out

@@ -1,0 +1,125 @@
+# Machine-readable transcription of the export layouts documented in
+# docs/sources/microsoft-formats.md and docs/sources/collectors.md.
+#
+# tests/test_corpus_layouts.py checks the generator's output against this file field for field.
+# This file is written from the documentation, not from the generator or the parsers, so the
+# test catches a writer that drifts from the documented layout.
+#
+# status: confirmed (Microsoft documentation), partial, or unconfirmed (best knowledge only).
+
+csv_layouts:
+  purview_ual_csv:
+    status: confirmed
+    ref: "microsoft-formats.md 1a-1"
+    columns: [CreationDate, UserIds, Operations, AuditData]
+  purview_ual_csv_v2:
+    status: unconfirmed
+    ref: "microsoft-formats.md 1a-2"
+    columns: [RecordId, CreationDate, RecordType, Operation, UserId, AuditData, AssociatedAdminUnits, AssociatedAdminUnitsNames]
+  ps_ual_csv:
+    status: partial
+    ref: "microsoft-formats.md 1b-1 (RunspaceId, IsValid, ObjectState and the order are unconfirmed)"
+    columns: [RunspaceId, RecordType, CreationDate, UserIds, Operations, AuditData, ResultIndex, ResultCount, Identity, IsValid, ObjectState]
+  entra_signin_csv:
+    status: unconfirmed
+    ref: "microsoft-formats.md 2a-2 best-knowledge header list"
+    columns:
+      - "Date (UTC)"
+      - "Request ID"
+      - "User agent"
+      - "Correlation ID"
+      - "User ID"
+      - "User"
+      - "Username"
+      - "User type"
+      - "Cross tenant access type"
+      - "Incoming token type"
+      - "Authentication Protocol"
+      - "Unique token identifier"
+      - "Original transfer method"
+      - "Client credential type"
+      - "Token issuer type"
+      - "Token issuer name"
+      - "Latency"
+      - "Application"
+      - "Application ID"
+      - "Resource"
+      - "Resource ID"
+      - "Resource tenant ID"
+      - "Home tenant ID"
+      - "Home tenant name"
+      - "IP address"
+      - "Location"
+      - "Status"
+      - "Sign-in error code"
+      - "Failure reason"
+      - "Client app"
+      - "Device ID"
+      - "Browser"
+      - "Operating System"
+      - "Compliant"
+      - "Managed"
+      - "Join Type"
+      - "Multifactor authentication result"
+      - "Multifactor authentication auth method"
+      - "Multifactor authentication auth detail"
+      - "Authentication requirement"
+      - "Sign-in identifier"
+      - "Session ID"
+      - "IP address (seen by resource)"
+      - "Through Global Secure Access"
+      - "Global Secure Access IP address"
+      - "Autonomous system number"
+      - "Flagged for review"
+      - "Token Protection - Sign In Session"
+      - "Conditional Access"
+      - "Managed Identity type"
+      - "Associated Resource Id"
+      - "Federated Token Id"
+      - "Federated Token Issuer"
+
+# 1c-1 common AuditData fields (confirmed). Version is listed in S6 only.
+auditdata_common_required: [Id, RecordType, CreationTime, Operation, OrganizationId, UserType, UserKey, Workload, UserId]
+auditdata_common_optional: [ResultStatus, ObjectId, ClientIP, Scope, AppAccessContext, Version]
+# 1c-2: UTC, no offset in Microsoft's samples; fraction and Z accepted.
+creation_time_pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$'
+# 1c-4 (confirmed field names)
+app_access_context: [AADSessionId, APIId, ClientAppId, ClientAppName, CorrelationId, UniqueTokenId, IssuedAtTime]
+
+# Workload-specific AuditData fields by RecordType (1c-3, 1d-1, 1e-1, 1e-2, 1f-1..3, 1g-1).
+auditdata_by_record_type:
+  1:   # ExchangeAdmin
+    documented: [ModifiedObjectResolvedName, Parameters, ModifiedProperties, ExternalAccess, OriginatingServer, OrganizationName, DeviceId, TokenObjectId, TokenTenantId]
+  2:   # ExchangeItem (Exchange Mailbox schema + ExchangeMailboxAuditRecord)
+    documented: [LogonType, InternalLogonType, MailboxGuid, MailboxOwnerUPN, MailboxOwnerSid, MailboxOwnerMasterAccountSid, LogonUserSid, LogonUserDisplayName, ExternalAccess, OriginatingServer, OrganizationName, ClientInfoString, ClientIPAddress, ClientMachineName, ClientProcessName, ClientVersion, SessionId, AppId, ClientAppId, HostAppId, OperationProperties, ClientRequestId, ExternalUserTenantId, ActorIP, ActorInfoString, DeviceId, CloudInstanceName, TokenObjectId, TokenTenantId, AuthType, TokenType, recipientCount, recipientList, Item, ModifiedProperties, SendAsUserSmtp, SendAsUserMailboxGuid, SendOnBehalfOfUserSmtp, SendOnBehalfOfUserMailboxGuid, AttachmentId, AttachmentSizeInBytes, SaveToSentItems]
+  3:   # ExchangeItemGroup (Exchange Mailbox schema + ExchangeMailboxAuditGroupRecord)
+    documented: [LogonType, InternalLogonType, MailboxGuid, MailboxOwnerUPN, MailboxOwnerSid, MailboxOwnerMasterAccountSid, LogonUserSid, LogonUserDisplayName, ExternalAccess, OriginatingServer, OrganizationName, ClientInfoString, ClientIPAddress, ClientMachineName, ClientProcessName, ClientVersion, SessionId, AppId, ClientAppId, HostAppId, OperationProperties, ClientRequestId, ExternalUserTenantId, ActorIP, ActorInfoString, DeviceId, CloudInstanceName, TokenObjectId, TokenTenantId, AuthType, TokenType, Folder, CrossMailboxOperations, DestMailboxId, DestMailboxOwnerUPN, DestMailboxOwnerSid, DestMailboxOwnerMasterAccountSid, DestFolder, Folders, AffectedItems]
+  50:  # ExchangeItemAggregated (MailItemsAccessed)
+    documented: [LogonType, InternalLogonType, MailboxGuid, MailboxOwnerUPN, MailboxOwnerSid, MailboxOwnerMasterAccountSid, LogonUserSid, LogonUserDisplayName, ExternalAccess, OriginatingServer, OrganizationName, ClientInfoString, ClientIPAddress, ClientMachineName, ClientProcessName, ClientVersion, SessionId, AppId, ClientAppId, HostAppId, OperationProperties, ClientRequestId, ExternalUserTenantId, ActorIP, ActorInfoString, DeviceId, CloudInstanceName, TokenObjectId, TokenTenantId, AuthType, TokenType, OperationCount, Folders, Messages]
+  6:   # SharePointFileOperation (SharePoint Base + file operations)
+    documented: [Site, ItemType, EventSource, SourceName, UserAgent, MachineDomainInfo, MachineId, ListItemUniqueId, ListId, ApplicationId, ApplicationDisplayName, IsWorkflow, SiteUrl, SourceRelativeUrl, SourceFileName, SourceFileExtension, DestinationRelativeUrl, DestinationFileName, DestinationFileExtension, UserSharedWith, SharingType, SourceLabel, DestinationLabel, SensitivityLabelOwnerEmail, SensitivityLabelId]
+  14:  # SharePointSharingOperation (SharePoint Base + sharing)
+    documented: [Site, ItemType, EventSource, SourceName, UserAgent, MachineDomainInfo, MachineId, ListItemUniqueId, ListId, ApplicationId, ApplicationDisplayName, IsWorkflow, TargetUserOrGroupName, TargetUserOrGroupType, EventData, SiteUrl, SourceRelativeUrl, SourceFileName, SourceFileExtension, UniqueSharingId]
+  8:   # AzureActiveDirectory (Base + Directory)
+    documented: [AzureActiveDirectoryEventType, ExtendedProperties, ModifiedProperties, Actor, ActorContextId, ActorIpAddress, InterSystemsId, IntraSystemsId, SupportTicketId, Target, TargetContextId]
+    # 1g-1 CONFLICT: S2's sample spells IntraSystemId; accepted as documented spelling variant.
+    documented_variants: [IntraSystemId]
+  15:  # AzureActiveDirectoryStsLogon (Base + Directory + STS logon)
+    documented: [AzureActiveDirectoryEventType, ExtendedProperties, ModifiedProperties, Actor, ActorContextId, ActorIpAddress, InterSystemsId, IntraSystemsId, SupportTicketId, Target, TargetContextId, ApplicationId, Client, DeviceProperties, ErrorCode, LogonError]
+    documented_variants: [IntraSystemId]
+    # 1g-2: ErrorNumber is not in Microsoft documentation but common in real records (unconfirmed).
+    unconfirmed: [ErrorNumber]
+
+# 2b-3 Graph beta signIn properties (confirmed) and nested types (2b-4).
+graph_signin_beta: [agent, appDisplayName, appId, appliedConditionalAccessPolicies, appOwnerTenantId, appliedEventListeners, appTokenProtectionStatus, authenticationAppDeviceDetails, authenticationAppPolicyEvaluationDetails, authenticationContextClassReferences, authenticationDetails, authenticationMethodsUsed, authenticationProcessingDetails, authenticationProtocol, authenticationRequirement, authenticationRequirementPolicies, autonomousSystemNumber, azureResourceId, clientAppUsed, clientCredentialType, conditionalAccessAudiences, conditionalAccessStatus, correlationId, createdDateTime, crossTenantAccessType, deviceDetail, federatedCredentialId, flaggedForReview, globalSecureAccessIpAddress, homeTenantId, homeTenantName, id, incomingTokenType, ipAddress, ipAddressFromResourceProvider, isInteractive, isTenantRestricted, isThroughGlobalSecureAccess, location, managedServiceIdentity, networkLocationDetails, originalRequestId, originalTransferMethod, privateLinkDetails, processingTimeInMilliseconds, resourceDisplayName, resourceId, resourceOwnerTenantId, resourceServicePrincipalId, resourceTenantId, riskDetail, riskEventTypes_v2, riskLevelAggregated, riskLevelDuringSignIn, riskState, servicePrincipalCredentialKeyId, servicePrincipalCredentialThumbprint, servicePrincipalId, servicePrincipalName, sessionLifetimePolicies, signInEventTypes, sessionId, signInIdentifier, signInIdentifierType, signInTokenProtectionStatus, status, tokenIssuerName, tokenIssuerType, tokenProtectionStatusDetails, uniqueTokenIdentifier, userAgent, userDisplayName, userId, userPrincipalName, userType, mfaDetail]
+graph_device_detail: [browser, deviceId, displayName, isCompliant, isManaged, operatingSystem, trustType]
+graph_location: [city, countryOrRegion, geoCoordinates, state]
+graph_geo: [altitude, latitude, longitude]
+graph_status: [additionalDetails, errorCode, failureReason]
+graph_mfa_detail: [authDetail, authMethod]
+
+# collectors.md 1.3: Microsoft-Extractor-Suite Get-UAL -Output JSON wrapper objects.
+extractor_suite_ual_json_wrapper:
+  status: partial
+  ref: "collectors.md 1.3 (wrapper properties are those of Search-UnifiedAuditLog; full set unconfirmed)"
+  keys: [RunspaceId, RecordType, CreationDate, UserIds, Operations, AuditData, ResultIndex, ResultCount, Identity, IsValid, ObjectState]
