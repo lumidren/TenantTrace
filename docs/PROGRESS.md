@@ -6,7 +6,7 @@ Resume here after a context reset: read this file, then `git log --oneline`.
 
 - [x] 1. Skeleton: package, CLI, case folder, hashing and manifest, processing log, event schema, SQLite store, CI
 - [x] 2. Formats and corpus
-- [ ] 3. Parsers and normalization
+- [x] 3. Parsers and normalization
 - [ ] 4. Evidence gap analysis
 - [ ] 5. Detection
 - [ ] 6. Timeline and pivot
@@ -26,10 +26,21 @@ Resume here after a context reset: read this file, then `git log --oneline`.
   Graph sign-in keys), record counts, documentation-only IPs and domains, and that the generator
   never imports tenanttrace.
 
+- Phase 3: seven parsers chosen by content (Purview CSV 4- and 8-column, Search-UnifiedAuditLog
+  CSV, UAL JSON/JSONL wrapper or AuditData, Entra sign-in CSV, Graph sign-in JSON, Azure Monitor
+  sign-ins, Entra directory audit JSON). tests/test_parsers.py: every corpus layout gets the right
+  parser and all records; per-file counts reconcile (total = parsed + unrecognised + malformed =
+  events stored); every demo event re-reads to its exact source text with a matching SHA-256;
+  overlapping exports link as duplicates; UAL sign-in copies corroborate Entra records; malformed
+  rows, truncated JSON, empty, binary and text files, UTF-16 without BOM and Windows-1252 inputs;
+  the four Splunk real-shape samples parse with no loss.
+- Entra audit JSON parsing is tested only through unit-level normalization, not a generated export
+  (the corpus has no Entra audit download).
+
 ## Next
 
-- Phase 3: format detection and parsers (Purview CSV both layouts, PowerShell CSV, UAL JSON,
-  Entra CSV and JSON, Extractor Suite layout), cross-log linking, raw pointers.
+- Phase 4: evidence gap analysis (reference table, per-source coverage by container, missing,
+  truncated, retention, quiet periods, auditing absent).
 
 ## Drafted ahead (uncommitted until their phase)
 
