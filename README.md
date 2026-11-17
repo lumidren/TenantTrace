@@ -1,4 +1,4 @@
-﻿# TenantTrace
+# TenantTrace
 
 **Offline investigation of Microsoft 365 business email compromise and account takeover, with a
 report you can defend.**
