@@ -180,6 +180,20 @@ def compute_coverage(store: CaseStore, params: dict[str, Any], log: ProcessingLo
         rows[entry["id"]]["alternatives_supplied"] = [
             a for a in entry.get("alternatives", []) if rows.get(a, {}).get("status") in ("present", "no_records")]
 
+    # a UAL export in which every record is about one account (as actor or as target) is a per-user
+    # collection (for example Hawk, or Search-UnifiedAuditLog -UserIds)
+    ual_filtered = False
+    if "ual" in containers:
+        top = store.conn.execute(
+            f"SELECT actor FROM events WHERE source LIKE 'ual_%' AND {ACTIVE} AND actor LIKE '%@%' "
+            "GROUP BY actor ORDER BY COUNT(*) DESC, actor LIMIT 1").fetchone()
+        total = store.conn.execute(f"SELECT COUNT(*) FROM events WHERE source LIKE 'ual_%' AND {ACTIVE}").fetchone()[0]
+        if top and total:
+            about = store.conn.execute(
+                f"SELECT COUNT(*) FROM events WHERE source LIKE 'ual_%' AND {ACTIVE} AND (actor = ? OR target = ?)",
+                (top[0], top[0])).fetchone()[0]
+            ual_filtered = about == total
+
     # pass 2: gaps
     gaps: list[dict[str, Any]] = []
     for entry in ref.sources:
@@ -196,14 +210,18 @@ def compute_coverage(store: CaseStore, params: dict[str, Any], log: ProcessingLo
             continue
         if status == "auditing_absent":
             siblings = sorted(s for s, v in stats.items() if v["events"] and s.startswith("ual_"))
+            causes = list(entry.get("absent_causes", [])) or [
+                "auditing for these record types was not enabled",
+                "the licence does not include these record types",
+                "the export was filtered to exclude them"]
+            if ual_filtered:
+                causes = ["the audit log export holds one account's records only, so this collection may simply not "
+                          "have included these record types (collector or search scope)"] + causes
             gaps.append(_gap(entry, "auditing_absent", row["covers_first"], row["covers_last"],
                              f"{entry['title']}: no records at all, although the same audit log export holds "
                              f"{sum(stats[s]['events'] for s in siblings):,} other records "
                              f"({', '.join(siblings)}). Active mailboxes produce these records every working day.",
-                             list(entry.get("absent_causes", [])) or [
-                                 "auditing for these record types was not enabled",
-                                 "the licence does not include these record types",
-                                 "the export was filtered to exclude them"], cites))
+                             causes, cites))
             continue
         if status != "present" or row["container"] == "ual":
             continue  # UAL sources share the export's period: judged once, at container level below
@@ -245,13 +263,10 @@ def compute_coverage(store: CaseStore, params: dict[str, Any], log: ProcessingLo
         if g:
             g["affects_sources"] = affected
             gaps.append(g)
-        n_actors = store.conn.execute(
-            f"SELECT COUNT(DISTINCT actor) FROM events WHERE source LIKE 'ual_%' AND {ACTIVE} AND actor LIKE '%@%'"
-        ).fetchone()[0]
-        n_users = store.conn.execute("SELECT COUNT(DISTINCT actor) FROM events WHERE actor LIKE '%@%'").fetchone()[0]
-        if n_actors == 1 and n_users > 1:
+        if ual_filtered:
             gaps.append(_gap(pseudo, "filtered", ual["first"], ual["last"],
-                             "The unified audit log export contains records for one account only.",
+                             "Every record in the unified audit log export concerns one account (as the actor or the "
+                             "target): it is a per-user collection, not a tenant-wide one.",
                              ["the export was filtered by user (for example Search-UnifiedAuditLog -UserIds)"],
                              cites_ual, affects_sources=affected,
                              effect="the tenant pivot cannot use the audit log to find other affected accounts"))
