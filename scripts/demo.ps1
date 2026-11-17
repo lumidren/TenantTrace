@@ -17,7 +17,10 @@ param(
     [string]$Out = (Join-Path $PSScriptRoot "..\demo-out")
 )
 
-$ErrorActionPreference = "Stop"
+# Native commands (python, pip) report failure through their exit code, which is checked after each
+# call. "Stop" is not used: Windows PowerShell 5.1 turns any stderr output of a native command, such
+# as pip's notices, into a terminating error.
+$ErrorActionPreference = "Continue"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
 
@@ -30,9 +33,7 @@ function Find-Python {
         $exe = $c[0]
         $extra = @()
         if ($c.Count -gt 1) { $extra = $c[1..($c.Count - 1)] }
-        try {
-            $ver = & $exe @extra -c "import sys, struct; print(sys.version_info[0], sys.version_info[1], struct.calcsize('P') * 8)" 2>$null
-        } catch { continue }
+        $ver = & $exe @extra -c "import sys, struct; print(sys.version_info[0], sys.version_info[1], struct.calcsize('P') * 8)" 2>$null
         if ($LASTEXITCODE -ne 0 -or -not $ver) { continue }
         $parts = $ver.Trim().Split(" ")
         if ([int]$parts[0] -eq 3 -and [int]$parts[1] -ge 12 -and [int]$parts[2] -eq 64) { return , $c }
@@ -49,12 +50,11 @@ if (-not (Test-Path $venvPython)) {
     & $py[0] @pyArgs -m venv .venv
     if ($LASTEXITCODE -ne 0) { throw "could not create the virtual environment" }
 }
-& $venvPython -c "import tenanttrace, ttcorpus" 2>$null
+& $venvPython -c "import tenanttrace, ttcorpus" *> $null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Installing TenantTrace into .venv"
-    & $venvPython -m pip install --quiet --upgrade pip
-    & $venvPython -m pip install --quiet -e .
-    if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
+    & $venvPython -m pip install --quiet --disable-pip-version-check -e . *> $null
+    if ($LASTEXITCODE -ne 0) { throw "pip install failed; run '.venv\Scripts\python -m pip install -e .' to see why" }
 }
 
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
