@@ -104,7 +104,7 @@ def build_timeline(store: CaseStore, user: str, findings: list[dict[str, Any]], 
         methods = sorted({lk["method"] for lk in links})
         steps.append({
             "kind": "finding",
-            "ts": f["first_ts"],
+            "ts": f.get("suspect_first_ts") or f["first_ts"],
             "end_ts": f["last_ts"],
             "label": "observed",
             "title": f["summary"],
@@ -123,8 +123,8 @@ def build_timeline(store: CaseStore, user: str, findings: list[dict[str, Any]], 
         if inferred:
             steps.append({
                 "kind": "attribution",
-                "ts": f["first_ts"],
-                "end_ts": f["first_ts"],
+                "ts": f.get("suspect_first_ts") or f["first_ts"],
+                "end_ts": f.get("suspect_first_ts") or f["first_ts"],
                 "label": "inference",
                 "title": f"Attributed to the sign-in from {evs[0].ip.split(':')[0] if evs else ''} by IP address and time, "
                          f"not by a recorded session identifier",
@@ -163,7 +163,7 @@ def build_timeline(store: CaseStore, user: str, findings: list[dict[str, Any]], 
                 "link_methods": [link["method"]],
             })
 
-    steps.extend(_inferences(findings, steps, ctx, window))
+    steps.extend(_inferences(findings, steps, ctx, window, signins))
     steps.sort(key=lambda s: (s["ts"], 0 if s["label"] == "observed" else 1, s.get("finding_id", ""), s["title"]))
     for i, s in enumerate(steps, 1):
         s["seq"] = i
@@ -197,40 +197,55 @@ def _describe(action: str, evs: list[Event]) -> str:
 
 
 def _inferences(findings: list[dict[str, Any]], steps: list[dict[str, Any]], ctx: Any,
-                window: dict[str, Any]) -> list[dict[str, Any]]:
+                window: dict[str, Any], signins: list[Event] | None = None) -> list[dict[str, Any]]:
     out = []
     access = [f for f in findings if f["stage"] == "access" and f["level"] in ("confirmed", "probable")]
     if access:
-        first = min(access, key=lambda f: f["first_ts"])
+        first = min(access, key=lambda f: f.get("suspect_first_ts") or f["first_ts"])
         others = [f for f in access if f is not first]
+        ts = first.get("suspect_first_ts") or first["first_ts"]
         out.append({
             "kind": "interpretation",
-            "ts": first["first_ts"],
-            "end_ts": first["first_ts"],
+            "ts": ts,
+            "end_ts": ts,
             "label": "inference",
             "title": "Likely start of attacker access to the account",
             "basis": [f"{first['rule_id']} ({first['level']}): {first['summary']}"] +
                      [f"{f['rule_id']} ({f['level']}): {f['summary']}" for f in others[:4]],
             "finding_id": first["id"],
+            "level": first["level"],
             "phase": "initial_access",
-            "event_ids": first["event_ids"][:5],
+            "event_ids": (first.get("suspect_event_ids") or first["event_ids"])[:5],
             "sources": [],
         })
-    replay = [f for f in findings if f.get("extra", {}).get("session_replay")]
-    for f in replay:
+    # a session whose own sign-ins imply impossible travel: state the replay as an inference
+    replayed = getattr(ctx, "session_countries", {}) or {}
+    by_session: dict[str, list[Event]] = defaultdict(list)
+    for e in signins or []:
+        if e.session_id in replayed and e.outcome == "success" and e.geo_country:
+            by_session[e.session_id].append(e)
+    for sid, evs in sorted(by_session.items()):
+        evs.sort(key=lambda x: (x.ts_utc, x.event_id))
+        pair = next(((a, b) for a, b in zip(evs, evs[1:]) if a.geo_country != b.geo_country), None)
+        if pair is None:
+            continue
+        a, b = pair
+        minutes = (parse_utc(b.ts_utc) - parse_utc(a.ts_utc)).total_seconds() / 60
         out.append({
             "kind": "interpretation",
-            "ts": f["first_ts"],
-            "end_ts": f["last_ts"],
+            "ts": b.ts_utc,
+            "end_ts": b.ts_utc,
             "label": "inference",
-            "title": "The same sign-in session was used from two countries: consistent with a stolen session "
-                     "cookie or token (adversary-in-the-middle phishing)",
-            "basis": [f"session ID recorded in sign-ins from {', '.join(f['indicators']['ips'])}",
-                      f"{f['rule_id']} ({f['level']})"],
-            "finding_id": f["id"],
+            "title": (f"The same sign-in session was used from {a.geo_city or a.geo_country}, {a.geo_country} and "
+                      f"{b.geo_city or b.geo_country}, {b.geo_country} {minutes:.0f} minutes apart: consistent with a "
+                      "stolen session cookie or token being replayed (adversary-in-the-middle phishing)"),
+            "basis": [f"session ID {sid} recorded in both sign-ins",
+                      f"sign-in at {a.ts_utc[:19]}Z from {a.ip} ({a.geo_country})",
+                      f"sign-in at {b.ts_utc[:19]}Z from {b.ip} ({b.geo_country})",
+                      "one device cannot be in both places within that time"],
             "phase": "initial_access",
-            "event_ids": f["event_ids"][:5],
-            "sources": [],
+            "event_ids": [a.event_id, b.event_id],
+            "sources": sorted({a.source, b.source}),
         })
     return out
 

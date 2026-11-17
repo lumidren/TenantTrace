@@ -227,6 +227,8 @@ class Finding:
             "level_reason": self.reason,
             "summary": render(r.get("summary", r["title"]), ev_sorted[0], self.extra, len(self.events)),
             "first_ts": self.first_ts,
+            "suspect_first_ts": min(e.ts_utc for e in self.suspect_events()),
+            "suspect_event_ids": sorted(e.event_id for e in self.suspect_events())[:MAX_EVIDENCE],
             "last_ts": self.last_ts,
             "event_count": len(self.events),
             "event_ids": [e.event_id for e in ev_sorted[:MAX_EVIDENCE]],
