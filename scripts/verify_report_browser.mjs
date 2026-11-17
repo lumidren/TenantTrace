@@ -93,6 +93,15 @@ async function main() {
     if (k === "Enter") await send("Input.dispatchKeyEvent", { type: "char", key: k, code, text: CR, unmodifiedText: CR });
     await send("Input.dispatchKeyEvent", { type: "keyUp", key: k, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
   };
+  // Poll a page expression until it is truthy (CI runners are slower than a laptop).
+  const waitFor = async (expr, ms = 8000) => {
+    for (let t = 0; t < ms; t += 100) {
+      const v = await evalJs(expr);
+      if (v) return v;
+      await sleep(100);
+    }
+    return evalJs(expr);
+  };
   const centre = (sel) => evalJs(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return null;
     e.scrollIntoView({block: "center", behavior: "instant"}); const r = e.getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; })()`);
 
@@ -102,9 +111,8 @@ async function main() {
   await send("Emulation.setFocusEmulationEnabled", { enabled: true });
   const url = pathToFileURL(resolve(reportArg)).href;
   await send("Page.navigate", { url });
-  for (let i = 0; i < 80 && !loaded; i++) await sleep(100);
-  await sleep(400);
-  check("report rendered", await evalJs(`document.querySelectorAll("li.step").length > 0 && !!document.querySelector("svg.coverage")`));
+  for (let i = 0; i < 150 && !loaded; i++) await sleep(100);
+  check("report rendered", await waitFor(`document.querySelectorAll("li.step").length > 0 && !!document.querySelector("svg.coverage")`, 15000));
 
   // 1. click the coverage-chart marker of the chosen rule's finding
   const markerSel = `svg.coverage circle.marker[aria-label*="${rule}"]`;
@@ -114,15 +122,16 @@ async function main() {
   const m = (await centre(markerSel)) || (await centre(markerFallback));
   check("coverage marker present for the finding", !!m, findingId || "");
   if (m) await click(m.x, m.y);
-  await sleep(300);
-  const title1 = await evalJs(`document.querySelector("aside.drawer #dr-title")?.textContent || ""`);
+  const title1 = await waitFor(`document.querySelector("aside.drawer #dr-title")?.textContent || ""`);
   check("marker click opens the finding", title1.length > 0, title1);
 
   // 2. click the first evidence record in the finding
+  await waitFor(`!!document.querySelector("aside.drawer tr.click")`);
   const row = await centre("aside.drawer tr.click");
   check("finding lists its evidence records", !!row);
   if (row) await click(row.x, row.y);
-  await sleep(300);
+  await waitFor(`(document.querySelector("aside.drawer pre.raw")?.textContent || "").length > 20
+    && /matches/.test(document.querySelector("aside.drawer .verify")?.textContent || "")`);
   const view = await evalJs(`(() => ({
     title: document.querySelector("aside.drawer #dr-title")?.textContent || "",
     verify: document.querySelector("aside.drawer .verify")?.textContent || "",
@@ -135,12 +144,10 @@ async function main() {
 
   // 3. keyboard: Escape closes, Enter on a focused timeline step opens it
   await key("Escape", "Escape");
-  await sleep(200);
-  check("Escape closes the panel", await evalJs(`!document.querySelector("aside.drawer")`));
+  check("Escape closes the panel", await waitFor(`!document.querySelector("aside.drawer")`));
   await evalJs(`(() => { const b = document.querySelector("li.step button.card"); b.scrollIntoView({block: "center", behavior: "instant"}); b.focus(); })()`);
   await key("Enter", "Enter");
-  await sleep(300);
-  check("Enter on a focused timeline step opens it", await evalJs(`!!document.querySelector("aside.drawer")`));
+  check("Enter on a focused timeline step opens it", await waitFor(`!!document.querySelector("aside.drawer")`));
 
   // 4. no network traffic beyond the file itself
   const external = requests.filter((u) => !u.startsWith("file:") && !u.startsWith("data:") && u !== "about:blank");
@@ -158,4 +165,11 @@ try {
   try { rmSync(profile, { recursive: true, force: true }); } catch { /* profile still locked */ }
 }
 console.log(JSON.stringify(results, null, 2));
+// On GitHub Actions, turn each failed check into an annotation: annotations are public, job logs are not.
+if (process.env.GITHUB_ACTIONS) {
+  for (const c of results.checks.filter((x) => !x.ok)) {
+    const detail = String(c.detail || "").replace(/[\r\n%]/g, " ").slice(0, 300);
+    console.log(`::error title=Report click-through::${c.name} failed${detail ? ": " + detail : ""}`);
+  }
+}
 process.exit(failed ? 1 : 0);
