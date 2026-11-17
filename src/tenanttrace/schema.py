@@ -11,7 +11,7 @@ Field groups:
   where    ip, geo_* (only from the log itself or an analyst-supplied offline IP database)
   how      user_agent, client_app, app_id, app_name, resource, device_*
   session  session_id, token_id, correlation_id, request_id, record_id
-  origin   file_id, line_start, line_end, byte_offset, raw_sha256, parser
+  origin   file_id, line/column span, byte_offset, raw_sha256, parser
 """
 
 from __future__ import annotations
@@ -97,10 +97,12 @@ class Event:
     details: dict[str, Any] = field(default_factory=dict)
     # origin pointer
     file_id: int = 0
-    line_start: int = 0
+    line_start: int = 0         # 1-based physical line where the raw record starts
+    col_start: int = 0          # character offset of the record within line_start
     line_end: int = 0
-    byte_offset: int | None = None
-    raw_sha256: str = ""
+    col_end: int = 0            # character offset just past the record within line_end
+    byte_offset: int | None = None  # byte offset of line_start (UTF-8 and single-byte files only)
+    raw_sha256: str = ""        # SHA-256 of the record text (decoded, re-encoded as UTF-8)
     # cross-log linking (filled after ingest)
     link_group: str = ""
     link_role: str = ""         # "primary", "duplicate", "corroborating" or ""

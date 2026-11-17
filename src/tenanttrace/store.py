@@ -10,7 +10,7 @@ from typing import Any, Iterable, Iterator
 from tenanttrace.schema import EVENT_COLUMNS, SCHEMA_VERSION, Event
 
 _REAL = {"geo_lat", "geo_lon"}
-_INT = {"file_id", "line_start", "line_end", "byte_offset", "interactive"}
+_INT = {"file_id", "line_start", "col_start", "line_end", "col_end", "byte_offset", "interactive"}
 
 
 def _coltype(name: str) -> str:
@@ -147,7 +147,7 @@ class CaseStore:
     def insert_events(self, events: Iterable[Event]) -> int:
         cols = ", ".join(EVENT_COLUMNS)
         qs = ", ".join("?" for _ in EVENT_COLUMNS)
-        sql = f"INSERT OR IGNORE INTO events({cols}) VALUES ({qs})"
+        sql = f"INSERT INTO events({cols}) VALUES ({qs})"  # a collision must fail loudly, never drop a record
         rows = []
         n = 0
         for ev in events:
