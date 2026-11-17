@@ -19,15 +19,28 @@ by an identifier that the logs themselves carry, with no inference needed for th
 All of the following hold:
 
 1. The triggering event is an observed record of the action (not an absence, not a count).
-2. The action is linked to an access path already established as adversarial by one of:
-   - the same Entra session ID or token identifier as a sign-in that is itself a finding at
-     probable or confirmed level, or
-   - a sign-in whose own triggering events include a session that was used from two
-     incompatible locations (session replay), or
-   - an indicator that the analyst has marked as known-bad (not used by the built-in rules).
+2. The adversary's involvement is established by recorded data rather than by inference, in one
+   of these ways:
+   - **Recorded identifier to attacker access.** The action carries the same Entra session ID or
+     token identifier as a sign-in that is itself a finding at probable or confirmed level, from an
+     address outside the account's baseline (TT-AUTH-001, TT-AUTH-002, TT-MAIL-001 to TT-MAIL-005,
+     TT-FILE-001, TT-FILE-002, TT-APP-001).
+   - **Session replay.** For a sign-in, its session ID appears in sign-ins whose locations and times
+     imply travel faster than an airliner (or, without coordinates, two countries within an hour):
+     one device cannot produce that, so a session token was used by someone else (TT-SIGNIN-001,
+     TT-SIGNIN-002, TT-SIGNIN-007).
+   - **Password spraying.** A successful sign-in from an address outside the account's baseline that,
+     in the same logs, failed to sign in to three or more accounts of the tenant (TT-SIGNIN-006).
+   - **Application identity.** Mail access records carry the application ID of an application this
+     account consented to with persistent (`offline_access`) mail permissions, and the access came
+     only from addresses the account never used (TT-APP-002).
 3. None of the rule's listed benign explanations is supported by the context the engine can
    check (for example the action did not come from a device and IP address both present in
-   the account's baseline).
+   the account's baseline). The flagged sessions and addresses in point 2 are never the account's
+   own baseline addresses.
+
+An analyst-supplied list of known-bad indicators would be a further way to reach this level; the
+built-in rules do not use one.
 
 ### Probable
 
