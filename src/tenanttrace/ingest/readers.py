@@ -1,12 +1,21 @@
 """Streaming readers that keep a pointer to every raw record.
 
-Each reader yields `RawRecord`s carrying the record's raw text, its first and last physical
-line in the file (1-based), the byte offset of its first character where the encoding allows
-it (UTF-8 and single-byte encodings), and the SHA-256 of the raw text. Nothing is read into
-memory beyond the current record and a bounded buffer, so multi-gigabyte exports stream.
+Each reader yields `RawRecord`s carrying the record's exact text and its span in the file:
+first and last physical line (1-based), the character column where it starts and ends, the
+byte offset of its first character where the encoding allows it (UTF-8 and single-byte
+encodings), and the SHA-256 of the text. `read_raw` re-reads a span from the file so that any
+normalized event can be traced back to, and re-verified against, the original record.
 
-Encodings handled: UTF-8 with or without BOM, UTF-16 LE/BE with BOM, UTF-16 LE without BOM
-(detected from NUL bytes), and cp1252 as the fallback for bytes that are not valid UTF-8.
+Nothing is held in memory beyond the current record and a bounded buffer, so multi-gigabyte
+exports stream.
+
+Encodings handled: UTF-8 with or without BOM, UTF-16 LE/BE with BOM, UTF-16 LE/BE without BOM
+(detected from NUL bytes), UTF-32 with BOM, and Windows-1252 as the fallback for bytes that are
+not valid UTF-8.
+
+Record hashes are computed over the decoded record text re-encoded as UTF-8, so the same
+record has the same hash whatever encoding the export used. The file as a whole is hashed over
+its bytes (see the manifest).
 """
 
 from __future__ import annotations
@@ -19,7 +28,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
+from typing import Iterable, Iterator
 
 from tenanttrace.hashing import sha256_text
 
@@ -32,9 +41,12 @@ SNIFF_BYTES = 64 * 1024
 class RawRecord:
     text: str
     line_start: int
+    col_start: int
     line_end: int
+    col_end: int
     byte_offset: int | None
     sha256: str
+    exact: bool = True      # False when the text is a re-serialisation (items of a wrapper object)
 
 
 @dataclass
@@ -68,7 +80,7 @@ def detect_encoding(head: bytes) -> Encoding:
         return Encoding("utf-8", 0, True, "UTF-8")
     except UnicodeDecodeError as exc:
         # a multi-byte sequence cut at the end of the sniff window is still UTF-8
-        if exc.start >= len(head) - 4:
+        if exc.start >= len(head) - 4 and len(head) >= SNIFF_BYTES - 4:
             return Encoding("utf-8", 0, True, "UTF-8")
         return Encoding("cp1252", 0, True, "not valid UTF-8; decoded as Windows-1252")
 
@@ -95,13 +107,31 @@ def iter_lines(path: Path, enc: Encoding) -> Iterator[tuple[int, str, int | None
                 yield n, raw.decode(enc.name, errors="replace"), offset
                 offset += len(raw)
     else:
+        # split on "\n" only, exactly like the byte-oriented path and the JSON line counter
         with open(path, "rb") as fh:
             fh.seek(enc.bom)
-            text = io.TextIOWrapper(fh, encoding=enc.name, errors="replace", newline="")
+            stream = io.TextIOWrapper(fh, encoding=enc.name, errors="replace", newline="")
             n = 0
-            for line in text:
+            pending = ""
+            while True:
+                chunk = stream.read(1 << 16)
+                if not chunk:
+                    break
+                parts = (pending + chunk).split("\n")
+                pending = parts.pop()
+                for p in parts:
+                    n += 1
+                    yield n, p + "\n", None
+            if pending:
                 n += 1
-                yield n, line, None
+                yield n, pending, None
+
+
+def _strip_nl(s: str) -> str:
+    return s.rstrip("\r\n")
+
+
+# ----------------------------------------------------------------------------- CSV
 
 
 @dataclass
@@ -111,10 +141,11 @@ class CsvRow:
 
 
 def iter_csv(path: Path, enc: Encoding) -> Iterator[CsvRow]:
-    """Stream CSV rows (header row included as the first yielded row).
+    """Stream CSV rows (the header row is the first row yielded).
 
-    A PowerShell `#TYPE ...` preamble line is yielded as a row with a single field so the
-    caller can recognise and skip it explicitly.
+    A record's raw text is its physical lines without the final line break. A PowerShell
+    `#TYPE ...` preamble line is yielded as a one-field row so the caller can skip it
+    explicitly. Blank lines are skipped.
     """
     buf: list[tuple[int, str, int | None]] = []
     lines = iter_lines(path, enc)
@@ -128,129 +159,169 @@ def iter_csv(path: Path, enc: Encoding) -> Iterator[CsvRow]:
     for fields in reader:
         if not buf:
             continue
-        first = buf[0]
-        text = "".join(b[1] for b in buf)
-        rec = RawRecord(text=text, line_start=first[0], line_end=buf[-1][0], byte_offset=first[2],
-                        sha256=sha256_text(text.rstrip("\r\n")))
+        first, last = buf[0], buf[-1]
+        text = _strip_nl("".join(b[1] for b in buf))
+        rec = RawRecord(text=text, line_start=first[0], col_start=0, line_end=last[0],
+                        col_end=len(_strip_nl(last[1])), byte_offset=first[2], sha256=sha256_text(text))
         buf.clear()
         if not fields or (len(fields) == 1 and fields[0].strip() == ""):
             continue  # blank line
         yield CsvRow(fields=fields, raw=rec)
 
 
+# ----------------------------------------------------------------------------- JSON
+
+
 @dataclass
 class JsonItem:
     obj: object | None      # None when the record could not be decoded
     raw: RawRecord
+    note: str = ""          # where the item sits (e.g. "value[3] of a Graph response wrapper")
     error: str = ""
 
 
-_ws = " \t\r\n,"
+_WS = " \t\r\n,"
 MAX_RECORD_CHARS = 32 * 1024 * 1024
-_RESYNC = re.compile(r"\n[ \t]*\{")
+_RESYNC = re.compile(r"\n[ \t]*[\[{]")
 
 
 def iter_json(path: Path, enc: Encoding, chunk_chars: int = 1 << 20) -> Iterator[JsonItem]:
-    """Stream records from a JSON array, JSON Lines, or concatenated JSON objects.
+    """Stream records from a JSON array, several concatenated arrays, JSON Lines, or
+    concatenated JSON objects.
 
-    Uses `json.JSONDecoder.raw_decode` on a sliding buffer so that each record is parsed by
-    the C decoder. Line numbers are tracked by counting newlines in consumed text. A Graph
-    style wrapper object (`{"value": [...]}`) is expanded into its items, all pointing at the
-    wrapper's line range with their index noted.
+    Each record is decoded by the C JSON decoder (`raw_decode`) from a sliding buffer. Line,
+    column and byte positions are tracked through the consumed text. A Graph response wrapper
+    (`{"@odata...": ..., "value": [...]}`) is expanded into its items; their raw text is a
+    re-serialisation, marked `exact=False`, pointing at the wrapper's span.
     """
     decoder = json.JSONDecoder()
     with open(path, "rb") as fh:
         fh.seek(enc.bom)
-        text_stream = io.TextIOWrapper(fh, encoding=enc.name, errors="replace", newline="")
-        buf = ""
-        pos = 0
-        line = 1           # line number at buf[pos]
-        byte_pos = enc.bom  # byte offset at buf[pos] (only meaningful if enc.byte_offsets)
-        eof = False
-        in_array = None    # None = undecided, True = inside top-level array, False = object stream
-        array_closed = False
+        stream = io.TextIOWrapper(fh, encoding=enc.name, errors="replace", newline="")
+        st = {"buf": "", "pos": 0, "line": 1, "col": 0, "byte": enc.bom, "eof": False}
 
         def refill() -> bool:
-            nonlocal buf, pos, eof
-            if eof:
+            if st["eof"]:
                 return False
-            chunk = text_stream.read(chunk_chars)
+            chunk = stream.read(chunk_chars)
             if not chunk:
-                eof = True
+                st["eof"] = True
                 return False
-            buf = buf[pos:] + chunk
-            pos = 0
+            st["buf"] = st["buf"][st["pos"]:] + chunk
+            st["pos"] = 0
             return True
 
         def advance(n: int) -> None:
-            nonlocal pos, line, byte_pos
-            seg = buf[pos:pos + n]
-            line += seg.count("\n")
+            seg = st["buf"][st["pos"]:st["pos"] + n]
+            nl = seg.count("\n")
+            if nl:
+                st["line"] += nl
+                st["col"] = len(seg) - seg.rfind("\n") - 1
+            else:
+                st["col"] += len(seg)
             if enc.byte_offsets:
-                byte_pos += len(seg.encode(enc.name, errors="replace"))
-            pos += n
+                st["byte"] += len(seg.encode(enc.name, errors="replace"))
+            st["pos"] += n
+
+        def make_raw(text: str) -> RawRecord:
+            nl = text.count("\n")
+            line_end = st["line"] + nl
+            col_end = (len(text) - text.rfind("\n") - 1) if nl else st["col"] + len(text)
+            return RawRecord(text, st["line"], st["col"], line_end, col_end,
+                             st["byte"] if enc.byte_offsets else None, sha256_text(text))
 
         refill()
+        in_array = False
         while True:
-            # skip whitespace and separators
             while True:
-                while pos < len(buf) and buf[pos] in _ws:
-                    advance(1)
-                if pos < len(buf) or not refill():
+                buf, pos = st["buf"], st["pos"]
+                while pos < len(buf) and buf[pos] in _WS:
+                    pos += 1
+                if pos > st["pos"]:
+                    advance(pos - st["pos"])
+                if st["pos"] < len(st["buf"]) or not refill():
                     break
-            if pos >= len(buf):
+            if st["pos"] >= len(st["buf"]):
                 break
-            ch = buf[pos]
-            if in_array is None:
-                if ch == "[":
-                    in_array = True
-                    advance(1)
-                    continue
-                in_array = False
-            if ch == "]" and in_array:
-                array_closed = True
+            ch = st["buf"][st["pos"]]
+            if ch == "[" and not in_array:
+                in_array = True
                 advance(1)
                 continue
-            # decode one value starting at pos
+            if ch == "]" and in_array:
+                in_array = False      # another top-level array may follow (appended pages)
+                advance(1)
+                continue
             bad: str | None = None
             while True:
                 try:
-                    obj, end = decoder.raw_decode(buf, pos)
+                    obj, end = decoder.raw_decode(st["buf"], st["pos"])
                     break
                 except json.JSONDecodeError as exc:
-                    # an incomplete record at the end of the buffer: read more, up to a bound
-                    if len(buf) - pos < MAX_RECORD_CHARS and refill():
+                    if len(st["buf"]) - st["pos"] < MAX_RECORD_CHARS and refill():
                         continue
                     bad = exc.msg
                     break
             if bad is not None:
-                # malformed (or truncated at EOF): emit it as one unparseable record and resync
+                buf, pos = st["buf"], st["pos"]
                 m = _RESYNC.search(buf, pos + 1)
                 stop = m.start() + 1 if m else len(buf)
-                rest = buf[pos:stop]
-                rec = RawRecord(rest, line, line + rest.count("\n"),
-                                byte_pos if enc.byte_offsets else None, sha256_text(rest))
-                yield JsonItem(None, rec, f"undecodable JSON ({bad})" + ("" if m else " at end of file"))
-                advance(len(rest))
+                rest = buf[pos:stop].rstrip()
+                rec = make_raw(rest)
+                yield JsonItem(None, rec, error=f"undecodable JSON ({bad})" + ("" if m else " at end of file"))
+                advance(stop - pos)
                 continue
-            raw_text = buf[pos:end]
-            start_line = line
-            start_byte = byte_pos if enc.byte_offsets else None
-            end_line = start_line + raw_text.count("\n")
-            rec = RawRecord(raw_text, start_line, end_line, start_byte, sha256_text(raw_text))
-            advance(end - pos)
-            if (isinstance(obj, dict) and isinstance(obj.get("value"), list)
-                    and any(k.startswith("@odata") for k in obj)):
+            raw_text = st["buf"][st["pos"]:end]
+            rec = make_raw(raw_text)
+            advance(end - st["pos"])
+            if isinstance(obj, dict) and isinstance(obj.get("value"), list) and any(k.startswith("@odata") for k in obj):
                 for i, item in enumerate(obj["value"]):
-                    item_text = json.dumps(item, sort_keys=True, ensure_ascii=False)
-                    sub = RawRecord(item_text, start_line, end_line, start_byte, sha256_text(item_text))
-                    yield JsonItem(item, sub, f"value[{i}] of a Graph response wrapper")
+                    t = json.dumps(item, sort_keys=True, ensure_ascii=False)
+                    sub = RawRecord(t, rec.line_start, rec.col_start, rec.line_end, rec.col_end, rec.byte_offset,
+                                    sha256_text(t), exact=False)
+                    yield JsonItem(item, sub, note=f"value[{i}] of a Graph response wrapper")
                 continue
-            if isinstance(obj, list) and not in_array:
+            if isinstance(obj, list):
                 for i, item in enumerate(obj):
-                    item_text = json.dumps(item, sort_keys=True, ensure_ascii=False)
-                    yield JsonItem(item, RawRecord(item_text, start_line, end_line, start_byte,
-                                                   sha256_text(item_text)), f"[{i}] of nested array")
+                    t = json.dumps(item, sort_keys=True, ensure_ascii=False)
+                    sub = RawRecord(t, rec.line_start, rec.col_start, rec.line_end, rec.col_end, rec.byte_offset,
+                                    sha256_text(t), exact=False)
+                    yield JsonItem(item, sub, note=f"[{i}] of a nested array")
                 continue
             yield JsonItem(obj, rec)
-        _ = array_closed
+
+
+# ----------------------------------------------------------------------------- re-reading
+
+
+def read_spans(path: Path, enc: Encoding, spans: Iterable[tuple[int, int, int, int]]) -> dict[tuple[int, int, int, int], str]:
+    """Re-read several (line_start, col_start, line_end, col_end) spans in one pass."""
+    wanted = sorted(set(spans))
+    if not wanted:
+        return {}
+    out: dict[tuple[int, int, int, int], str] = {}
+    max_line = max(s[2] for s in wanted)
+    lines: dict[int, str] = {}
+    needed: set[int] = set()
+    for s in wanted:
+        needed.update(range(s[0], s[2] + 1))
+    for n, text, _ in iter_lines(path, enc):
+        if n in needed:
+            lines[n] = text
+        if n >= max_line:
+            break
+    for s in wanted:
+        l0, c0, l1, c1 = s
+        if l0 not in lines or l1 not in lines:
+            continue
+        if l0 == l1:
+            out[s] = lines[l0][c0:c1]
+        else:
+            parts = [lines[l0][c0:]] + [lines[i] for i in range(l0 + 1, l1)] + [lines[l1][:c1]]
+            out[s] = "".join(parts)
+    return out
+
+
+def read_span(path: Path, enc: Encoding, line_start: int, col_start: int, line_end: int, col_end: int) -> str | None:
+    return read_spans(path, enc, [(line_start, col_start, line_end, col_end)]).get(
+        (line_start, col_start, line_end, col_end))

@@ -126,3 +126,33 @@ def test_parse_ts_across_dst_change_is_monotonic():
 def test_parse_ts_rejects_garbage(bad):
     with pytest.raises((TimeParseError, ValueError)):
         parse_ts(bad)
+
+
+@pytest.mark.parametrize("encoding,bom", [("utf-8", b""), ("utf-8", codecs.BOM_UTF8), ("utf-16-le", codecs.BOM_UTF16_LE)])
+def test_read_span_round_trips_every_record(tmp_path, encoding, bom):
+    from tenanttrace.ingest.readers import read_spans
+
+    recs = [{"id": i, "text": "multi\nline" if i % 2 else "x", "ü": "é"} for i in range(5)]
+    p = tmp_path / "f.json"
+    p.write_bytes(bom + json.dumps(recs, indent=4).replace("\n", "\r\n").encode(encoding))
+    enc = _enc(p)
+    items = list(iter_json(p, enc, chunk_chars=37))
+    spans = {(i.raw.line_start, i.raw.col_start, i.raw.line_end, i.raw.col_end): i for i in items}
+    texts = read_spans(p, enc, spans.keys())
+    for span, item in spans.items():
+        assert texts[span] == item.raw.text
+        assert json.loads(texts[span]) == item.obj
+
+    c = tmp_path / "f.csv"
+    c.write_bytes(bom + CSV_TEXT.encode(encoding))
+    enc = _enc(c)
+    rows = list(iter_csv(c, enc))
+    got = read_spans(c, enc, [(r.raw.line_start, r.raw.col_start, r.raw.line_end, r.raw.col_end) for r in rows])
+    for r in rows:
+        assert got[(r.raw.line_start, r.raw.col_start, r.raw.line_end, r.raw.col_end)] == r.raw.text
+
+
+def test_concatenated_arrays_are_read_as_one_stream(tmp_path):
+    p = tmp_path / "pages.json"
+    p.write_text('[{"a": 1}, {"a": 2}]\r\n[{"a": 3}]\r\n', encoding="utf-8")
+    assert [i.obj for i in iter_json(p, _enc(p))] == [{"a": 1}, {"a": 2}, {"a": 3}]
