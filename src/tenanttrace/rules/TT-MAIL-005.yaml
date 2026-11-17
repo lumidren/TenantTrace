@@ -1,0 +1,35 @@
+id: TT-MAIL-005
+version: 1
+title: Mailbox read over a legacy protocol from an unfamiliar IP address
+kind: match
+stage: post
+phase: collection
+attack:
+  - {id: T1114.002, name: "Email Collection: Remote Email Collection"}
+  - {id: T1078.004, name: "Valid Accounts: Cloud Accounts"}
+sources:
+  all: [ual_mailbox_items]
+needs_baseline_days: 14
+select:
+  all:
+    - {field: action, equals: mail.items_accessed}
+    - {field: client_app, in_ci: [imap4, pop3, exchangeactivesync, activesync]}
+    - {not: {ctx: ip_in_baseline}}
+group: {by: [ip, client_app], within: 12h}
+summary: "Mailbox read over {client_app} from {ip}: {count} access record(s), the first covering {details.item_count} item(s) ({details.access_type})"
+why: >
+  IMAP and POP clients download mail with a password alone, so they are the usual way to copy a
+  mailbox when MFA blocks a browser. Mail access over these protocols from an address the account
+  never used is visible in the mailbox audit records even when no sign-in logs were supplied.
+benign:
+  - A user setting up a personal mail client or a third-party mail app on a new network.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "the access carries the session or token identifier of a sign-in already assessed as attacker access"
+  - level: probable
+    when: {any: [{ctx: ip_flagged}, {not: {ctx: ip_in_baseline}}]}
+    reason: "a legacy mail protocol (no MFA possible) from an IP address the account never used before"
+  - level: possible
+    when: true
+    reason: "legacy protocol access"

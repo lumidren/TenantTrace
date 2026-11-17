@@ -1,0 +1,36 @@
+id: TT-MAIL-003
+version: 1
+title: Mailbox delegate or folder permission granted
+kind: match
+stage: post
+phase: persistence
+attack:
+  - {id: T1098.002, name: "Account Manipulation: Additional Email Delegate Permissions"}
+sources:
+  any: [ual_exchange_admin]
+select:
+  field: action
+  in: [mailbox.permission_add, mailbox.folder_permission_add, mailbox.recipient_permission_add, mailbox.send_on_behalf_add]
+summary: "{operation} on {target}: {details.grantee} granted {details.access_rights} (by {actor}, from {ip})"
+why: >
+  Granting another identity read or send rights over a mailbox, or opening a folder to the
+  organisation's Default user, gives an attacker continued access to the mail without needing
+  the victim's credentials again.
+benign:
+  - An administrator granting a colleague access to a shared or departed user's mailbox.
+  - A manager delegating calendar or inbox access to an assistant.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "granted in a session or with a token that belongs to a sign-in already assessed as attacker access"
+  - level: probable
+    when:
+      any:
+        - {ctx: ip_flagged}
+        - all:
+            - {not: {ctx: ip_in_baseline}}
+            - {field: details.grantee, in_ci: [default, anonymous]}
+    reason: "granted from an IP address outside the account's history, or opened to everyone in the organisation"
+  - level: possible
+    when: true
+    reason: "granted from the usual context of the account that made the change; routine delegation is plausible"

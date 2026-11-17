@@ -1,0 +1,36 @@
+id: TT-FILE-001
+version: 1
+title: Bulk file download from SharePoint or OneDrive
+kind: threshold
+stage: post
+phase: collection
+attack:
+  - {id: T1530, name: "Data from Cloud Storage"}
+  - {id: T1213.002, name: "Data from Information Repositories: Sharepoint"}
+sources:
+  any: [ual_sharepoint]
+select:
+  field: action
+  in: [file.downloaded, file.sync_downloaded]
+threshold:
+  count: 15
+  within: 30m
+  baseline_factor: 2
+summary: "{count} file downloads within a burst starting at {ts_utc} from {ip} (threshold {extra.threshold}; the account's busiest 30 minutes before the window had {extra.baseline_peak})"
+why: >
+  After gaining access, attackers download finance, contract and customer documents in bulk to
+  find material for fraud or extortion. A burst far above the account's own busiest period
+  before the compromise window stands out.
+benign:
+  - A user syncing a library to a new device.
+  - Migration or backup work, typically by administrators.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "downloads carry the session or token identifier of a sign-in already assessed as attacker access"
+  - level: probable
+    when: {any: [{ctx: ip_flagged}, {all: [{not: {ctx_all: ip_in_baseline}}, {not: {ctx_all: device_in_baseline}}]}]}
+    reason: "burst came from an IP address and client outside the account's history"
+  - level: possible
+    when: true
+    reason: "burst came from the account's usual IP address and client; bulk work is plausible"

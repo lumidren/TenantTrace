@@ -1,0 +1,40 @@
+id: TT-APP-002
+version: 1
+title: Mail accessed by an application shortly after the account consented to it
+pivot_app: true
+kind: sequence
+stage: post
+phase: collection
+attack:
+  - {id: T1114.002, name: "Email Collection: Remote Email Collection"}
+  - {id: T1550.001, name: "Use Alternate Authentication Material: Application Access Token"}
+sources:
+  all: [ual_mailbox_items]
+  any: [ual_azuread, entra_audit]
+sequence:
+  first:
+    all:
+      - {field: action, in: [app.consent, app.permission_grant]}
+      - field: details.scopes
+        intersects_ci: [mail.read, mail.readwrite, mail.send, full_access_as_user, ews.accessasuser.all]
+  then:
+    {field: action, equals: mail.items_accessed}
+  join: [app_id]
+  within: 30d
+summary: "Application {app_id} was granted consent and then accessed the mailbox ({extra.then_count} access record(s))"
+why: >
+  Mail access records that carry the application ID of a freshly consented app show the app
+  using its grant. When the access comes from an address the user never used, the app is
+  operated by someone else.
+benign:
+  - A legitimate mail client or archiving tool doing its initial synchronisation.
+confidence:
+  - level: confirmed
+    when: {all: [{not: {ctx_all: ip_in_baseline}}, {field: details.scopes, intersects_ci: [offline_access]}]}
+    reason: "the consented app (identified by the application ID recorded in both the consent and the access records) read mail from an IP address the account never used"
+  - level: probable
+    when: {not: {ctx_all: ip_in_baseline}}
+    reason: "the consented app read mail from an IP address outside the account's history"
+  - level: possible
+    when: true
+    reason: "the consented app read mail from the account's usual addresses"

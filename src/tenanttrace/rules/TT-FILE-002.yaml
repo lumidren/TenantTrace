@@ -1,0 +1,35 @@
+id: TT-FILE-002
+version: 1
+title: Anonymous link or external sharing created
+kind: match
+stage: post
+phase: exfiltration
+attack:
+  - {id: T1567, name: "Exfiltration Over Web Service"}
+  - {id: T1530, name: "Data from Cloud Storage"}
+sources:
+  any: [ual_sharepoint]
+select:
+  any:
+    - {field: action, equals: sharing.anonymous_link}
+    - all:
+        - {field: action, in: [sharing.invitation, sharing.set, sharing.secure_link]}
+        - {ctx: external_target}
+group: {by: [ip, action], within: 2h}
+summary: "{count} {operation} record(s) from {ip}; first item {details.file_name}"
+why: >
+  Anonymous ("anyone with the link") links and invitations to outside addresses move documents
+  out of the organisation without downloading them, and keep working after the account is
+  secured unless the links are removed.
+benign:
+  - Sharing documents with customers, suppliers or advisers as part of normal work.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "sharing done in a session or with a token that belongs to a sign-in already assessed as attacker access"
+  - level: probable
+    when: {any: [{ctx: ip_flagged}, {not: {ctx_all: ip_in_baseline}}]}
+    reason: "sharing done from an IP address outside the account's history"
+  - level: possible
+    when: true
+    reason: "sharing done from the account's usual context"

@@ -1,0 +1,36 @@
+id: TT-MAIL-004
+version: 1
+title: Mailbox items accessed from an attacker-linked session or IP address
+kind: match
+stage: post
+phase: collection
+attack:
+  - {id: T1114.002, name: "Email Collection: Remote Email Collection"}
+sources:
+  all: [ual_mailbox_items]
+depends_on_access: true
+select:
+  all:
+    - {field: action, equals: mail.items_accessed}
+    - {ctx: in_window}
+    - any:
+        - {ctx: session_or_token_flagged}
+        - {ctx: ip_flagged}
+group: {by: [ip], within: 6h}
+summary: "Mail items accessed ({details.access_type}) from {ip} via {client_app}: {count} record(s) covering {details.item_count} item(s) in the first record"
+why: >
+  MailItemsAccessed records show which messages were opened or synchronised and by which
+  session and client. When they come from the attacker's session or address they show what
+  the attacker could read, which is the key question for notification decisions.
+benign:
+  - The user's own client on a new network that an access rule flagged as unusual.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "the records carry the session or token identifier of a sign-in already assessed as attacker access"
+  - level: probable
+    when: {ctx: ip_flagged}
+    reason: "same IP address as a sign-in assessed as attacker access, but no shared session identifier"
+  - level: possible
+    when: true
+    reason: "linked to attacker access only indirectly"

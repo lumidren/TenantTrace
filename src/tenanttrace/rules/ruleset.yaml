@@ -1,0 +1,4 @@
+# TenantTrace rule set. Bump `version` whenever any rule file changes: reports name it so that
+# the same inputs, rule set and reference table always reproduce the same findings.
+version: "2026.11.2"
+title: TenantTrace Microsoft 365 BEC and account takeover rules

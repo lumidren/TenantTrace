@@ -1,0 +1,36 @@
+id: TT-SIGNIN-007
+version: 1
+title: Non-interactive token use from an unfamiliar IP address
+kind: match
+stage: access
+phase: initial_access
+attack:
+  - {id: T1550.001, name: "Use Alternate Authentication Material: Application Access Token"}
+sources:
+  all: [entra_signin_noninteractive]
+select:
+  all:
+    - {field: category, equals: signin}
+    - {field: outcome, equals: success}
+    - {field: interactive, equals: 0}
+    - {not: {ctx: ip_in_baseline}}
+    - {ctx: in_window}
+group: {by: [ip], within: 12h}
+summary: "{count} non-interactive sign-in(s) (token use) from {ip} ({geo_city}, {geo_country}) for {app_name}, an IP never seen for this account"
+why: >
+  Non-interactive sign-ins are made by clients that already hold a token. When they come from
+  an address the account never used, a stolen refresh token or session cookie is likely being
+  replayed. No password or MFA prompt is involved, so these sign-ins appear only in the
+  non-interactive sign-in log.
+benign:
+  - The user's own device moving to a new network (new home broadband, hotel, mobile carrier).
+confidence:
+  - level: confirmed
+    when: {ctx: session_replayed}
+    reason: "the token's session was also used from another country"
+  - level: probable
+    when: {not: {ctx: device_in_baseline}}
+    reason: "token use from a new IP address by a device or client the account never used before"
+  - level: possible
+    when: true
+    reason: "token use from a new IP address by one of the account's known devices; travel or a new network is plausible"

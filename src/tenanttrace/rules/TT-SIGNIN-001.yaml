@@ -1,0 +1,38 @@
+id: TT-SIGNIN-001
+version: 1
+title: Sign-in from a country not seen in the account's history
+kind: deviation
+stage: access
+phase: initial_access
+attack:
+  - {id: T1078.004, name: "Valid Accounts: Cloud Accounts"}
+sources:
+  any: [entra_signin_interactive, entra_signin_noninteractive]
+needs_baseline_days: 14
+baseline_kind: signin
+needs_fields: [geo_country]
+field_category: signin
+select:
+  all:
+    - {field: category, equals: signin}
+    - {field: outcome, equals: success}
+deviation: {attribute: country}
+summary: "Successful sign-in from {geo_city}, {geo_country} ({ip}), a country never seen for this account before the compromise window ({count} sign-in(s))"
+why: >
+  Attackers who obtain credentials or session tokens usually sign in from their own
+  infrastructure, which rarely sits in the same country as the victim. A country that never
+  appears in the account's own history is a common first sign of takeover.
+benign:
+  - Business travel or holiday.
+  - A VPN or mobile carrier whose exit point is in another country.
+  - IP geolocation error by the sign-in service.
+confidence:
+  - level: confirmed
+    when: {all: [{ctx: session_replayed}, {not: {ctx: ip_in_baseline}}]}
+    reason: "the same session ID was used from two countries, which a single legitimate device does not do"
+  - level: probable
+    when: {all: [{not: {ctx: device_in_baseline}}, {not: {ctx: ip_in_baseline}}]}
+    reason: "new country together with a device and IP address the account never used before"
+  - level: possible
+    when: true
+    reason: "new country only; the device or IP address matches the account's history, so travel or a VPN remain plausible"

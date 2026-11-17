@@ -1,0 +1,38 @@
+id: TT-SIGNIN-003
+version: 1
+title: Sign-in from a device or client not seen in the account's history
+kind: deviation
+stage: access
+phase: initial_access
+attack:
+  - {id: T1078.004, name: "Valid Accounts: Cloud Accounts"}
+sources:
+  any: [entra_signin_interactive, entra_signin_noninteractive]
+needs_baseline_days: 14
+baseline_kind: signin
+select:
+  all:
+    - {field: category, equals: signin}
+    - {field: outcome, equals: success}
+deviation: {attribute: device}
+summary: "Successful sign-in from a device or client never seen before for this account ({device_os} {device_browser}; user agent {user_agent}) from {ip} ({count} sign-in(s))"
+why: >
+  An attacker replaying stolen credentials or tokens signs in from their own machine or tool,
+  which presents a device, operating system and client the account has never used.
+benign:
+  - A new or replaced laptop or phone.
+  - A browser or operating system upgrade that changes the reported client.
+  - A new application the user has started to use.
+confidence:
+  - level: probable
+    when:
+      all:
+        - {not: {ctx: ip_in_baseline}}
+        - any:
+            - {not: {ctx: country_in_baseline}}
+            - {field: user_agent, regex: "python|curl|go-http|okhttp|axios|node-fetch|powershell"}
+            - {ctx: session_replayed}
+    reason: "new device from an unknown IP address, combined with a new country, a scripting client or a replayed session"
+  - level: possible
+    when: true
+    reason: "new device or client only; a new or upgraded device remains plausible"

@@ -1,0 +1,32 @@
+id: TT-AUTH-001
+version: 1
+title: MFA method or security information changed
+kind: match
+stage: post
+phase: persistence
+attack:
+  - {id: T1556.006, name: "Modify Authentication Process: Multi-Factor Authentication"}
+  - {id: T1098.005, name: "Account Manipulation: Device Registration"}
+sources:
+  any: [ual_azuread, entra_audit]
+select:
+  field: action
+  in: [auth.security_info_registered, auth.security_info_changed, auth.security_info_deleted, auth.strong_auth_update]
+group: {by: [ip], within: 1h}
+summary: "{operation} ({details.method}) from {ip} ({count} record(s))"
+why: >
+  An attacker who has signed in once registers their own authenticator app or phone number so
+  that they can pass MFA again after the session expires or the password is reset.
+benign:
+  - A user setting up a new or replacement phone.
+  - Help-desk assisted re-registration after a lost device.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "registered in a session or with a token that belongs to a sign-in already assessed as attacker access"
+  - level: probable
+    when: {any: [{ctx: ip_flagged}, {all: [{not: {ctx: ip_in_baseline}}, {not: {ctx: device_in_baseline}}]}]}
+    reason: "changed from an IP address and device outside the account's history"
+  - level: possible
+    when: true
+    reason: "changed from the account's usual context; a new phone or re-registration is plausible"

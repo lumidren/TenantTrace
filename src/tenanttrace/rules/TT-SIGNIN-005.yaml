@@ -1,0 +1,33 @@
+id: TT-SIGNIN-005
+version: 1
+title: Single-factor sign-in from an unfamiliar IP address
+kind: match
+stage: access
+phase: initial_access
+attack:
+  - {id: T1078.004, name: "Valid Accounts: Cloud Accounts"}
+sources:
+  any: [entra_signin_interactive, entra_signin_noninteractive]
+select:
+  all:
+    - {field: category, equals: signin}
+    - {field: outcome, equals: success}
+    - {field: auth_requirement, equals_ci: singleFactorAuthentication}
+    - {not: {ctx: ip_in_baseline}}
+    - {ctx: in_window}
+group: {by: [ip], within: 6h}
+summary: "Successful single-factor sign-in from {ip} ({geo_city}, {geo_country}) using {client_app}, an IP never seen for this account ({count} sign-in(s))"
+why: >
+  A sign-in that needed only a password, from an address the account never used, means MFA
+  was not applied to it, whether by policy gap, exclusion or protocol. That is the path an
+  attacker with a stolen password takes.
+benign:
+  - Conditional access policies that do not require MFA from some locations or apps.
+  - A trusted-location exclusion covering a new office or VPN.
+confidence:
+  - level: probable
+    when: {any: [{not: {ctx: device_in_baseline}}, {not: {ctx: country_in_baseline}}]}
+    reason: "password-only sign-in from a new IP address, combined with a new device or a new country"
+  - level: possible
+    when: true
+    reason: "password-only sign-in from a new IP address on a known device"

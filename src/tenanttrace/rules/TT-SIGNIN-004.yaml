@@ -1,0 +1,35 @@
+id: TT-SIGNIN-004
+version: 1
+title: Successful sign-in over a legacy authentication protocol
+kind: match
+stage: access
+phase: initial_access
+anchor: true
+attack:
+  - {id: T1078.004, name: "Valid Accounts: Cloud Accounts"}
+sources:
+  any: [entra_signin_interactive, entra_signin_noninteractive]
+select:
+  all:
+    - {field: category, equals: signin}
+    - {field: outcome, equals: success}
+    - field: client_app
+      in_ci: [imap4, pop3, authenticated smtp, smtp, exchange activesync, other clients, autodiscover,
+              exchange online powershell, exchange web services, mapi over http, offline address book,
+              outlook anywhere (rpc over http), reporting web services, universal outlook]
+group: {by: [ip, client_app], within: 6h}
+summary: "Successful {client_app} sign-in from {ip} ({count} sign-in(s)); legacy protocols cannot perform MFA"
+why: >
+  Legacy protocols such as IMAP, POP and authenticated SMTP accept only a password, so they
+  bypass multi-factor authentication entirely. Attackers who have a password often use them
+  to read or exfiltrate mail when MFA blocks a browser sign-in.
+benign:
+  - An old mail client, printer or scanner that still uses a legacy protocol.
+  - A line-of-business application sending mail over authenticated SMTP.
+confidence:
+  - level: probable
+    when: {not: {ctx: ip_in_baseline}}
+    reason: "legacy protocol success from an IP address never used by the account before"
+  - level: possible
+    when: true
+    reason: "legacy protocol success from a known IP address; an old device or application remains plausible"

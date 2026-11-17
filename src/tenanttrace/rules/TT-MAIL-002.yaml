@@ -1,0 +1,32 @@
+id: TT-MAIL-002
+version: 1
+title: Mailbox forwarding configured
+kind: match
+stage: post
+phase: collection
+anchor: true
+attack:
+  - {id: T1114.003, name: "Email Collection: Email Forwarding Rule"}
+sources:
+  any: [ual_exchange_admin]
+select:
+  all:
+    - {field: action, equals: mailbox.forwarding_set}
+    - {field: details.forward_to, exists: true}
+summary: "Mailbox forwarding set to {details.forward_to} (keep a copy: {details.deliver_and_forward}) from {ip}"
+why: >
+  Forwarding at mailbox level sends a copy of every incoming message to another address,
+  giving an attacker a continuous feed of the victim's mail that survives a password reset.
+benign:
+  - A user forwarding to their own mailbox in another tenant during a migration.
+  - An approved forward to an assistant or shared service address.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "configured in a session or with a token that belongs to a sign-in already assessed as attacker access"
+  - level: probable
+    when: {all: [{ctx: external_target}, {any: [{ctx: ip_flagged}, {not: {ctx: ip_in_baseline}}]}]}
+    reason: "forwards outside the organisation and was configured from an IP address outside the account's history"
+  - level: possible
+    when: true
+    reason: "forwarding configured from the account's usual context or to an internal address"

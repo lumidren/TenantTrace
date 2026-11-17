@@ -1,0 +1,50 @@
+id: TT-MAIL-001
+version: 1
+title: Inbox rule that forwards, deletes or hides mail
+kind: match
+stage: post
+phase: defense_evasion
+anchor: true
+attack:
+  - {id: T1564.008, name: "Hide Artifacts: Email Hiding Rules"}
+  - {id: T1114.003, name: "Email Collection: Email Forwarding Rule"}
+sources:
+  any: [ual_exchange_admin, ual_mailbox_items]
+select:
+  all:
+    - {field: action, in: [inbox_rule.create, inbox_rule.update]}
+    - any:
+        - {all: [{field: details.forward_to, exists: true}, {ctx: external_target}]}
+        - {field: details.delete_message, truthy: true}
+        - field: details.move_to_folder
+          contains_any_ci: [rss, archive, conversation history, junk, deleted items, notes, sync issues, outbox]
+        - {all: [{field: details.mark_as_read, truthy: true}, {field: details.keywords, exists: true}]}
+        - {field: details.rule_name, regex: "^[^A-Za-z0-9]{1,4}$"}
+summary: "Inbox rule \"{details.rule_name}\" ({operation}) from {ip}: keywords {details.keywords}; move to {details.move_to_folder}; mark read {details.mark_as_read}; delete {details.delete_message}; forward {details.forward_to}"
+why: >
+  In business email compromise the attacker hides replies from the real mailbox owner, so
+  that a fraudulent payment conversation can continue unnoticed. Rules that move messages
+  with finance words to rarely opened folders, mark them read, delete them or forward them
+  outside the organisation are the usual way to do it. Names of one or two punctuation
+  characters are a common attacker habit.
+benign:
+  - Users filing newsletters or notifications into an archive folder.
+  - A deliberate rule forwarding to a personal or partner address, if the organisation allows it.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "created in a session or with a token that belongs to a sign-in already assessed as attacker access"
+  - level: probable
+    when:
+      any:
+        - {ctx: ip_flagged}
+        - all:
+            - {not: {ctx: ip_in_baseline}}
+            - any:
+                - {field: details.keywords, contains_any_ci: [invoice, payment, bank, wire, remittance, transfer, swift, iban, account details]}
+                - {ctx: external_target}
+                - {field: details.rule_name, regex: "^[^A-Za-z0-9]{1,4}$"}
+    reason: "created from an IP address outside the account's history and the rule targets payment mail, forwards externally or has a throwaway name"
+  - level: possible
+    when: true
+    reason: "the rule hides or forwards mail but came from the account's usual context; it may be the user's own housekeeping"

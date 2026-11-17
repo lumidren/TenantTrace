@@ -1,0 +1,36 @@
+id: TT-SIGNIN-002
+version: 1
+title: Impossible travel between consecutive sign-ins
+kind: travel
+stage: access
+phase: initial_access
+attack:
+  - {id: T1078.004, name: "Valid Accounts: Cloud Accounts"}
+sources:
+  any: [entra_signin_interactive, entra_signin_noninteractive]
+needs_fields: [geo_lat]
+field_category: signin
+select:
+  all:
+    - {field: category, equals: signin}
+    - {field: outcome, equals: success}
+travel: {max_kmh: 900, min_km: 500}
+summary: "Sign-ins from {extra.from} and {extra.to}: {extra.distance_km} km apart within {extra.hours} h (about {extra.speed_kmh} km/h)"
+why: >
+  Two successful sign-ins that would require faster-than-airliner travel between them cannot
+  both come from the same person at the same device. One of them is often an attacker using
+  stolen credentials or a replayed session.
+benign:
+  - A corporate VPN or proxy that exits in a different country from the user's real location.
+  - Mobile devices whose carrier egress point is far from the user.
+  - Coarse or wrong IP geolocation, especially for cloud hosting ranges.
+confidence:
+  - level: confirmed
+    when: {ctx: session_replayed}
+    reason: "a session ID in this pair was also used from another country, so a session token was replayed"
+  - level: probable
+    when: {not: {ctx_all: device_in_baseline}}
+    reason: "at least one side of the pair used a device the account never used before"
+  - level: possible
+    when: true
+    reason: "both sign-ins came from known devices; a VPN or geolocation error remains plausible"

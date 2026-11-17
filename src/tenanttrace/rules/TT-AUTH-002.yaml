@@ -1,0 +1,29 @@
+id: TT-AUTH-002
+version: 1
+title: Device registered to the account
+kind: match
+stage: post
+phase: persistence
+attack:
+  - {id: T1098.005, name: "Account Manipulation: Device Registration"}
+sources:
+  any: [ual_azuread, entra_audit]
+select:
+  field: action
+  in: [device.register, device.owner_add]
+summary: "{operation}: {details.device_name} from {ip}"
+why: >
+  Registering a device in Entra ID lets an attacker obtain device-bound tokens and can satisfy
+  conditional access policies that trust registered devices, which keeps access alive.
+benign:
+  - Enrolment of a new corporate laptop or phone.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "registered in a session or with a token that belongs to a sign-in already assessed as attacker access"
+  - level: probable
+    when: {any: [{ctx: ip_flagged}, {all: [{not: {ctx: ip_in_baseline}}, {not: {ctx: device_in_baseline}}]}]}
+    reason: "registered from an IP address and client outside the account's history"
+  - level: possible
+    when: true
+    reason: "registered from the account's usual context; a new device enrolment is plausible"

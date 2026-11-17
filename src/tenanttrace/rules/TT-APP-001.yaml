@@ -1,0 +1,44 @@
+id: TT-APP-001
+version: 1
+title: Consent granted to an application with mail or file access
+pivot_app: true
+kind: match
+stage: post
+phase: persistence
+anchor: true
+flags_app: true
+attack:
+  - {id: T1528, name: "Steal Application Access Token"}
+  - {id: T1550.001, name: "Use Alternate Authentication Material: Application Access Token"}
+sources:
+  any: [ual_azuread, entra_audit]
+select:
+  all:
+    - {field: action, in: [app.consent, app.permission_grant]}
+    - field: details.scopes
+      intersects_ci: [mail.read, mail.readwrite, mail.send, mail.readbasic, mailboxsettings.readwrite,
+                      files.read.all, files.readwrite.all, sites.read.all, sites.readwrite.all,
+                      full_access_as_user, ews.accessasuser.all, contacts.read, contacts.readwrite,
+                      directory.readwrite.all, user.readwrite.all]
+summary: "Consent to \"{details.app_name}\" ({app_id}) with scopes {details.scopes} (admin consent: {details.is_admin_consent}) from {ip}"
+why: >
+  Consent phishing gets the victim to authorise an attacker-controlled application. The app
+  then reads mail or files with its own tokens, which survive password resets and MFA
+  changes, and its activity is attributed to the application rather than to a sign-in.
+benign:
+  - A legitimate productivity or e-signature application the organisation uses.
+  - An administrator approving a vetted line-of-business app.
+confidence:
+  - level: confirmed
+    when: {ctx: session_or_token_flagged}
+    reason: "consent was given in a session that belongs to a sign-in already assessed as attacker access"
+  - level: probable
+    when:
+      all:
+        - {field: details.scopes, intersects_ci: [offline_access]}
+        - field: details.scopes
+          intersects_ci: [mail.readwrite, mail.send, files.readwrite.all, full_access_as_user, mailboxsettings.readwrite]
+    reason: "the app asked for persistent (offline) access together with write access to mail or files"
+  - level: possible
+    when: true
+    reason: "the app can read mail or files but did not ask for both persistence and write access"

@@ -1,0 +1,40 @@
+id: TT-SIGNIN-006
+version: 1
+title: Repeated failed sign-ins followed by a success from the same IP address
+kind: sequence
+stage: access
+phase: credential_access
+anchor: true
+attack:
+  - {id: T1110.003, name: "Brute Force: Password Spraying"}
+  - {id: T1078.004, name: "Valid Accounts: Cloud Accounts"}
+sources:
+  any: [entra_signin_interactive, entra_signin_noninteractive, ual_azuread_logon]
+sequence:
+  first:
+    all:
+      - {field: category, equals: signin}
+      - {field: outcome, equals: failure}
+  first_min_count: 3
+  then:
+    all:
+      - {field: category, equals: signin}
+      - {field: outcome, equals: success}
+  join: [ip]
+  within: 24h
+summary: "{extra.first_count} failed sign-in(s) from {ip} followed by {extra.then_count} successful sign-in(s) from the same address"
+why: >
+  Password spraying and guessing produce runs of failures from one address; a success from
+  the same address shortly after means a password was found.
+benign:
+  - A user mistyping a changed password on a device that keeps retrying, then entering it correctly.
+confidence:
+  - level: confirmed
+    when: {all: [{ctx: ip_failed_many_users}, {not: {ctx: ip_in_baseline}}]}
+    reason: "the same IP address failed against three or more accounts in the tenant and then succeeded against this one"
+  - level: probable
+    when: {not: {ctx: ip_in_baseline}}
+    reason: "failures then success from an IP address never used by the account before"
+  - level: possible
+    when: true
+    reason: "failures then success from a known IP address; a mistyped or recently changed password remains plausible"
