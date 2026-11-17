@@ -8,7 +8,7 @@ Resume here after a context reset: read this file, then `git log --oneline`.
 - [x] 2. Formats and corpus
 - [x] 3. Parsers and normalization
 - [x] 4. Evidence gap analysis
-- [ ] 5. Detection
+- [x] 5. Detection
 - [ ] 6. Timeline and pivot
 - [ ] 7. Report
 - [ ] 8. Evaluation and ship
@@ -46,9 +46,20 @@ Resume here after a context reset: read this file, then `git log --oneline`.
   period); the six intact cases report no gaps; the demo reports only its missing non-interactive
   sign-ins; a user absent from every log is reported per source.
 
+- Phase 5: rule engine (match, threshold, deviation, sequence, travel), 18 rule files with
+  why/benign/sources/confidence/ATT&CK, account baseline, two-stage evaluation, per-rule
+  capability check whose results go into coverage.json. tests/test_rules.py has a positive and a
+  negative case for every rule, checks ATT&CK IDs against docs/sources/attack-techniques.md, and
+  checks that a missing source, absent auditing, a short history or missing coordinates give
+  "could not be assessed". `tteval` on the 12 scenarios: 52/52 expected findings, 0 false positives
+  (attack, degraded and benign), 8 benign findings all at "possible" within their allowed rules,
+  10/10 rules correctly not assessable, 10/10 gaps, 12/12 pivot accounts, 0 extra.
+  tests/test_determinism.py (two runs identical) and tests/test_network.py (full run, no socket).
+
 ## Next
 
-- Phase 5: rule engine, rule files, baseline, per-rule capability check feeding the gap analysis.
+- Phase 6: timeline and pivot verification (session linking, sequence order, fact and inference
+  labels, confidence on every step, pivot listing the second account).
 
 ## Drafted ahead (uncommitted until their phase)
 
