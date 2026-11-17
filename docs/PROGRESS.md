@@ -10,7 +10,7 @@ Resume here after a context reset: read this file, then `git log --oneline`.
 - [x] 4. Evidence gap analysis
 - [x] 5. Detection
 - [x] 6. Timeline and pivot
-- [ ] 7. Report
+- [x] 7. Report
 - [ ] 8. Evaluation and ship
 
 ## Verified
@@ -65,10 +65,22 @@ Resume here after a context reset: read this file, then `git log --oneline`.
   the pivot lists exactly the second victim (demo), the three spray targets (legacy case) and the
   second consenting user (OAuth case).
 
+- Phase 7: report.json (the export), self-contained report.html (Vite + TypeScript template
+  committed at src/tenanttrace/report/template.html, CSP forbids all connections) and report.pdf
+  (fpdf2). Executive summary, coverage chart with one lane per source, gaps shaded and labelled,
+  detections overlaid; filterable timeline with observed/inference styling; finding drawer with
+  evidence; raw-record view re-verified against the ingest hash; gaps, capability, pivot, inputs
+  and hashes, method; light/dark/print. tests/test_report.py (7 tests). Browser check:
+  scripts/verify_report_browser.mjs opened the demo report from file:// in the installed Edge
+  with name resolution and proxying disabled, clicked a coverage marker, the finding's evidence
+  row, and saw the raw record with "SHA-256 matches"; Escape closes, Enter opens a focused step;
+  zero network requests. Screenshots in docs/screenshots/.
+- The PDF layout was checked by text extraction only (no PDF renderer is installed here).
+
 ## Next
 
-- Phase 7: report (Vite + TypeScript single-file HTML template committed in the package, PDF via
-  fpdf2, JSON export, raw-record view, coverage chart, interactive timeline, print, themes).
+- Phase 8: evaluation results table committed, performance run (1M events), DST and other
+  hostile-input checks, demo.ps1, README, final docs.
 
 ## Drafted ahead (uncommitted until their phase)
 
