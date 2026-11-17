@@ -1,0 +1,245 @@
+# TenantTrace gap reference table.
+#
+# For each Microsoft 365 log source TenantTrace understands: what it records, which licences
+# include it, default retention, whether it is on by default, why it can be absent, and the
+# Microsoft documentation each statement rests on. The gap analysis reasons only from this
+# table, and every report names the table version it used.
+#
+# `verified: true` means every statement in the entry was found in Microsoft documentation on
+# `last_checked` (see docs/sources/retention-licensing.md for the notes). `verified: false`
+# means at least one statement is best knowledge; `unverified` lists which. Unverified entries
+# are shown as such in the report and listed in docs/VERIFY.md.
+#
+# Field meanings:
+#   container      the export that carries these records ("ual" = unified audit log export)
+#   activity       "continuous": an active account produces these records every working day,
+#                  so their absence means something; "sparse": produced only when a specific
+#                  change happens, so absence is normal
+#   expected       "required" | "recommended" | "optional" for a BEC investigation
+#   alternatives   other sources that carry the same evidence; a missing source with a present
+#                  alternative is reported as a note, not a gap
+version: "2026.11.17-1"
+title: Microsoft 365 log sources for BEC and account takeover investigation
+sources:
+  - id: entra_signin_interactive
+    title: Microsoft Entra interactive user sign-in logs
+    container: entra_signin_interactive
+    activity: continuous
+    expected: required
+    records: >
+      Sign-ins where the user provided a credential or interaction (password, MFA prompt):
+      time, IP address, location, client app, device, application, result, MFA detail, and
+      (in the download and beta API) session ID and unique token identifier.
+    licence: "Microsoft Entra ID Free and above in the admin centre; programmatic (Graph) access needs P1 or P2"
+    retention:
+      summary: "Free: 7 days. P1/P2: 30 days. Changes are not retroactive."
+      options:
+        - {days: 7, applies_to: "Microsoft Entra ID Free"}
+        - {days: 30, applies_to: "Microsoft Entra ID P1 or P2"}
+    default_on: "Yes. On Free tenants collection starts the first time the portal or reporting API is used."
+    export_limits: "Admin-centre download: up to 100,000 sign-in records per file (CSV or JSON, UTC timestamps)."
+    missing_causes:
+      - "only one tab of the sign-in logs was downloaded"
+      - "the export window was set too narrowly"
+    citations:
+      - {key: E1, url: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/reference-reports-data-retention", supports: "retention by licence; not retroactive; collection start on Free"}
+      - {key: E6, url: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/howto-download-logs", supports: "download formats, 100,000 records per file, UTC timestamps"}
+      - {key: E2, url: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/concept-sign-ins", supports: "sign-in log types"}
+    last_checked: "2026-11-17"
+    verified: true
+
+  - id: entra_signin_noninteractive
+    title: Microsoft Entra non-interactive user sign-in logs
+    container: entra_signin_noninteractive
+    activity: continuous
+    expected: required
+    records: >
+      Sign-ins made by a client on the user's behalf without user interaction, such as token
+      refreshes. This is where replay of a stolen refresh token or session cookie shows up.
+    licence: "Microsoft Entra ID; whether Free tenants can see and download non-interactive sign-ins is not documented"
+    retention:
+      summary: "Free: 7 days. P1/P2: 30 days."
+      options:
+        - {days: 7, applies_to: "Microsoft Entra ID Free"}
+        - {days: 30, applies_to: "Microsoft Entra ID P1 or P2"}
+    default_on: "Yes"
+    export_limits: "Admin-centre download: up to 100,000 sign-in records per file. The UI groups similar non-interactive sign-ins."
+    missing_causes:
+      - "only the interactive tab was downloaded, which is a common collection mistake"
+      - "the tenant's licence may not expose non-interactive sign-ins (undocumented for Free)"
+    citations:
+      - {key: E1, url: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/reference-reports-data-retention", supports: "retention by licence"}
+      - {key: E3, url: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/concept-noninteractive-sign-ins", supports: "what non-interactive sign-ins record; grouping in the UI"}
+      - {key: E6, url: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/howto-download-logs", supports: "separate non-interactive download option"}
+    last_checked: "2026-11-17"
+    verified: false
+    unverified: ["availability of non-interactive sign-ins to Microsoft Entra ID Free tenants"]
+
+  - id: entra_audit
+    title: Microsoft Entra audit logs
+    container: entra_audit
+    activity: sparse
+    expected: recommended
+    alternatives: [ual_azuread]
+    records: >
+      Directory changes: users, groups, applications and consents, service principals,
+      security info (MFA method) registration, device registration.
+    licence: "Microsoft Entra ID Free and above; programmatic (Graph) access needs P1 or P2"
+    retention:
+      summary: "Free: 7 days. P1/P2: 30 days."
+      options:
+        - {days: 7, applies_to: "Microsoft Entra ID Free"}
+        - {days: 30, applies_to: "Microsoft Entra ID P1 or P2"}
+    default_on: "Yes"
+    export_limits: "Admin-centre download: up to 250,000 audit records per file."
+    citations:
+      - {key: E1, url: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/reference-reports-data-retention", supports: "retention by licence"}
+      - {key: E5, url: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/concept-audit-logs", supports: "what the audit log records"}
+      - {key: E6, url: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/howto-download-logs", supports: "250,000 audit records per download"}
+    last_checked: "2026-11-17"
+    verified: true
+
+  - id: ual_azuread_logon
+    title: "Unified audit log: Entra sign-in records (UserLoggedIn, UserLoginFailed)"
+    container: ual
+    activity: continuous
+    expected: optional
+    alternatives: [entra_signin_interactive]
+    records: >
+      Copies of Entra sign-in events in the unified audit log (AzureActiveDirectoryStsLogon).
+      They carry IP address, user agent and application, but not the location or MFA detail
+      of the Entra sign-in log. TenantTrace links them to Entra sign-in records rather than
+      counting them twice.
+    licence: "Audit (Standard), included with the appropriate Microsoft 365 / Office 365 subscription"
+    retention:
+      summary: "Audit (Standard): 180 days for records created on or after 2023-10-17 (90 days before). Audit (Premium): 1 year for AzureActiveDirectory workload records of E5 users."
+      options:
+        - {days: 90, applies_to: "Audit (Standard), records created before 2023-10-17"}
+        - {days: 180, applies_to: "Audit (Standard)"}
+        - {days: 365, applies_to: "Audit (Premium) default policy (E5 users)"}
+    default_on: "Yes for enterprise organisations; not by default for Business Basic/Standard/Premium or unmanaged trial tenants"
+    citations:
+      - {key: P1, url: "https://learn.microsoft.com/en-us/purview/audit-solutions-overview", supports: "Audit (Standard) retention 180/90 days; default-on"}
+      - {key: P2, url: "https://learn.microsoft.com/en-us/purview/audit-log-retention-policies", supports: "Audit (Premium) 1-year default policy by workload"}
+      - {key: P4, url: "https://learn.microsoft.com/en-us/purview/audit-log-enable-disable", supports: "default state; SMB and trial exception; UnifiedAuditLogIngestionEnabled"}
+      - {key: P12, url: "https://learn.microsoft.com/en-us/office/office-365-management-api/office-365-management-activity-api-schema", supports: "record type 15 AzureActiveDirectoryStsLogon"}
+    last_checked: "2026-11-17"
+    verified: false
+    unverified: ["record type of UserLoggedIn (documented only for UserLoginFailed)"]
+
+  - id: ual_azuread
+    title: "Unified audit log: Entra directory records (consent, security info, devices, users)"
+    container: ual
+    activity: sparse
+    expected: required
+    alternatives: [entra_audit]
+    records: >
+      Directory changes copied into the unified audit log with a trailing period on the
+      operation name, for example "Consent to application." and "User registered security info.".
+    licence: "Audit (Standard)"
+    retention:
+      summary: "Audit (Standard): 180 days (90 days before 2023-10-17). Audit (Premium): 1 year for E5 users."
+      options:
+        - {days: 90, applies_to: "Audit (Standard), records created before 2023-10-17"}
+        - {days: 180, applies_to: "Audit (Standard)"}
+        - {days: 365, applies_to: "Audit (Premium) default policy (E5 users)"}
+    default_on: "Yes for enterprise organisations; not by default for Business Basic/Standard/Premium or unmanaged trial tenants"
+    citations:
+      - {key: P1, url: "https://learn.microsoft.com/en-us/purview/audit-solutions-overview", supports: "retention and default state"}
+      - {key: P10, url: "https://learn.microsoft.com/en-us/purview/audit-log-activities", supports: "Entra operation names in the audit log end with a period"}
+    last_checked: "2026-11-17"
+    verified: false
+    unverified: ["UAL operation strings for consent, security info and device registration (documented without the trailing period in Entra; UAL form inferred)"]
+
+  - id: ual_exchange_admin
+    title: "Unified audit log: Exchange admin records (cmdlets, including inbox rules and forwarding)"
+    container: ual
+    activity: sparse
+    expected: required
+    records: >
+      Every state-changing Exchange cmdlet, including New-InboxRule, Set-InboxRule, Set-Mailbox
+      (forwarding), Add-MailboxPermission, Add-RecipientPermission and
+      Add-MailboxFolderPermission, with the parameters used. Entries can take up to 30 minutes
+      to appear.
+    licence: "Audit (Standard)"
+    retention:
+      summary: "Audit (Standard): 180 days (90 days before 2023-10-17). Audit (Premium): 1 year for Exchange workload records of E5 users."
+      options:
+        - {days: 90, applies_to: "Audit (Standard), records created before 2023-10-17"}
+        - {days: 180, applies_to: "Audit (Standard)"}
+        - {days: 365, applies_to: "Audit (Premium) default policy (E5 users)"}
+    default_on: "Yes when unified audit log ingestion is on"
+    citations:
+      - {key: P10, url: "https://learn.microsoft.com/en-us/purview/audit-log-activities", supports: "Exchange admin activities: all state-changing cmdlets logged"}
+      - {key: P12, url: "https://learn.microsoft.com/en-us/office/office-365-management-api/office-365-management-activity-api-schema", supports: "Exchange Admin schema, Parameters list"}
+      - {key: P2, url: "https://learn.microsoft.com/en-us/purview/audit-log-retention-policies", supports: "retention by workload"}
+    last_checked: "2026-11-17"
+    verified: true
+
+  - id: ual_mailbox_items
+    title: "Unified audit log: Exchange mailbox item records (MailItemsAccessed, Send, deletes)"
+    container: ual
+    activity: continuous
+    expected: required
+    records: >
+      Mailbox auditing: MailItemsAccessed (which messages were read or synchronised, by which
+      session and client), Send, SendAs, SendOnBehalf, SoftDelete, HardDelete,
+      MoveToDeletedItems and UpdateInboxRules.
+    licence: "Mailbox auditing: all organisations. MailItemsAccessed: on by default for Office 365 / Microsoft 365 E3 and E5 users (part of Audit (Standard) today; the date it became Standard is not documented)."
+    retention:
+      summary: "Follows the user's audit retention: 180 days under Audit (Standard), 1 year under Audit (Premium) for E5 users."
+      options:
+        - {days: 90, applies_to: "Audit (Standard), records created before 2023-10-17"}
+        - {days: 180, applies_to: "Audit (Standard)"}
+        - {days: 365, applies_to: "Audit (Premium) default policy (E5 users)"}
+    default_on: "Yes: mailbox auditing is on by default for user, shared and Microsoft 365 Group mailboxes; not supported for resource and public folder mailboxes"
+    absent_causes:
+      - "mailbox auditing switched off for the organisation (Set-OrganizationConfig -AuditDisabled $true)"
+      - "an audit bypass association for the account (Set-MailboxAuditBypassAssociation)"
+      - "a customised audit action set that dropped these actions (new defaults are not added to customised sets)"
+      - "licence: MailItemsAccessed is on by default only for E3/E5 users"
+      - "the export was filtered by record type or operation"
+    citations:
+      - {key: P3, url: "https://learn.microsoft.com/en-us/purview/audit-mailboxes", supports: "default-on mailbox auditing, default actions, bypass, organisation-wide off switch, unsupported mailbox types"}
+      - {key: P5, url: "https://learn.microsoft.com/en-us/purview/audit-log-investigate-accounts", supports: "MailItemsAccessed licence and default state"}
+      - {key: P12, url: "https://learn.microsoft.com/en-us/office/office-365-management-api/office-365-management-activity-api-schema", supports: "record type 50 ExchangeItemAggregated"}
+    last_checked: "2026-11-17"
+    verified: false
+    unverified: ["date MailItemsAccessed moved from Audit (Premium) to Audit (Standard)", "whether MailItemsAccessed throttling (IsThrottled) still applies"]
+
+  - id: ual_sharepoint
+    title: "Unified audit log: SharePoint and OneDrive file and sharing records"
+    container: ual
+    activity: continuous
+    expected: required
+    records: >
+      File operations (FileAccessed, FileDownloaded, FileSyncDownloadedFull, FileModified,
+      FileUploaded) and sharing (AnonymousLinkCreated, CompanyLinkCreated,
+      SharingInvitationCreated, SharingSet, SecureLinkCreated, AddedToSecureLink).
+    licence: "Audit (Standard)"
+    retention:
+      summary: "Audit (Standard): 180 days (90 days before 2023-10-17). Audit (Premium): 1 year for SharePoint/OneDrive workload records of E5 users."
+      options:
+        - {days: 90, applies_to: "Audit (Standard), records created before 2023-10-17"}
+        - {days: 180, applies_to: "Audit (Standard)"}
+        - {days: 365, applies_to: "Audit (Premium) default policy (E5 users)"}
+    default_on: "Yes when unified audit log ingestion is on"
+    absent_causes:
+      - "the export was filtered to Exchange or Entra record types only"
+      - "unified audit log ingestion was off for the period"
+    citations:
+      - {key: P9, url: "https://learn.microsoft.com/en-us/purview/audit-log-sharing", supports: "sharing audit records"}
+      - {key: P10, url: "https://learn.microsoft.com/en-us/purview/audit-log-activities", supports: "file and sharing operation names; FileAccessed de-duplication window"}
+      - {key: P2, url: "https://learn.microsoft.com/en-us/purview/audit-log-retention-policies", supports: "retention by workload"}
+    last_checked: "2026-11-17"
+    verified: true
+
+# Export-level facts used to recognise truncation. Each is cited in docs/sources/.
+export_limits:
+  - {format: purview_ual_csv, rows: 50000, applies_to: "Purview audit search export, Audit (Standard)", citation: "https://learn.microsoft.com/en-us/purview/audit-log-export-records"}
+  - {format: purview_ual_csv, rows: 1000000, applies_to: "Purview audit search export, Audit (Premium)", citation: "https://learn.microsoft.com/en-us/purview/audit-log-export-records"}
+  - {format: ps_ual_csv, rows: 5000, applies_to: "Search-UnifiedAuditLog -ResultSize maximum / ReturnNextPreviewPage", citation: "https://learn.microsoft.com/en-us/powershell/module/exchangepowershell/search-unifiedauditlog"}
+  - {format: ps_ual_csv, rows: 10000, applies_to: "Search-UnifiedAuditLog mixed session commands", citation: "https://learn.microsoft.com/en-us/powershell/module/exchangepowershell/search-unifiedauditlog"}
+  - {format: ps_ual_csv, rows: 50000, applies_to: "Search-UnifiedAuditLog ReturnLargeSet per session", citation: "https://learn.microsoft.com/en-us/powershell/module/exchangepowershell/search-unifiedauditlog"}
+  - {format: entra_signin, rows: 100000, applies_to: "Entra admin-centre sign-in download per file", citation: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/howto-download-logs"}
+  - {format: entra_audit, rows: 250000, applies_to: "Entra admin-centre audit download per file", citation: "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/howto-download-logs"}
