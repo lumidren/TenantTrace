@@ -59,6 +59,8 @@ def load_scenario(sid: str) -> dict[str, Any]:
             base["kind"] = "degraded"
             base["base"] = v["base"]
             base["degrade"] = v.get("degrade", {})
+            if v.get("exports_override"):
+                base["exports"] = v["exports_override"]
             truth = base.setdefault("truth", {})
             for k, val in (v.get("truth") or {}).items():
                 truth[k] = val
@@ -132,6 +134,11 @@ def write_exports(w: World, spec: dict[str, Any], out: Path) -> list[dict[str, A
         elif fmt == "extractor_suite":
             sub = write_extractor_suite(w, spec, path, ops, signins)
             files.extend(sub)
+            continue
+        elif fmt == "hawk":
+            from ttcorpus.hawk import write_hawk
+
+            files.extend(write_hawk(w, spec, path, ops))
             continue
         else:
             raise ValueError(f"unknown export format {fmt}")

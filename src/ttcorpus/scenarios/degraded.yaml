@@ -52,3 +52,20 @@ variants:
     truth:
       expected_gaps:
         - {source: ual, kind: quiet}
+  - id: collector_hawk_legacy
+    base: attack_legacy_forwarding
+    title: "Legacy/forwarding attack collected with Hawk for the one compromised user"
+    exports_override:
+      - {format: hawk, path: "Hawk"}
+    truth:
+      # Hawk collects per-user audit records only: no Entra sign-in logs, no SharePoint, no other accounts
+      expected_gaps:
+        - {source: entra_signin_interactive, kind: missing}
+        - {source: entra_signin_noninteractive, kind: missing}
+        - {source: ual_sharepoint, kind: auditing_absent}
+        - {source: ual, kind: filtered}
+      expected_not_assessable: [TT-SIGNIN-001, TT-SIGNIN-002, TT-SIGNIN-003, TT-SIGNIN-004, TT-SIGNIN-005,
+                                TT-SIGNIN-007]
+      drop_expected_rules: [TT-SIGNIN-001, TT-SIGNIN-002, TT-SIGNIN-003, TT-SIGNIN-004, TT-SIGNIN-005,
+                            TT-SIGNIN-007]
+      pivot_users: []

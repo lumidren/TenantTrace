@@ -123,3 +123,13 @@ extractor_suite_ual_json_wrapper:
   status: partial
   ref: "collectors.md 1.3 (wrapper properties are those of Search-UnifiedAuditLog; full set unconfirmed)"
   keys: [RunspaceId, RecordType, CreationDate, UserIds, Operations, AuditData, ResultIndex, ResultCount, Identity, IsValid, ObjectState]
+
+# collectors.md 2.1-2.3: Hawk v4.0 per-user output. Raw files are the cmdlet's objects
+# (same wrapper keys as Search-UnifiedAuditLog, AuditData kept as a JSON string); Simple_ and
+# Converted_ files flatten AuditData with these leading columns (the rest varies by run).
+hawk_raw_json_wrapper:
+  status: partial
+  ref: "collectors.md 2.1 and 2.3"
+  keys: [RunspaceId, RecordType, CreationDate, UserIds, Operations, AuditData, ResultIndex, ResultCount, Identity, IsValid, ObjectState]
+hawk_simple_lead: [CreationTime, Workload, RecordType, Operation, ResultStatus, ClientIP, UserId, Id, OrganizationId, UserType, UserKey, ObjectId, Scope, AppAccessContext]
+hawk_auth_lead: [CreationTime, UserId, Workload, ClientIP, CountryName, KnownMicrosoftIP]
