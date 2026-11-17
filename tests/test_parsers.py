@@ -25,6 +25,8 @@ EXPECTED_PARSER = {
     "entra_signin_json": "entra_signin_json",
     "extractor_suite_ual_json": "ual_json",
     "extractor_suite_signin_json": "entra_signin_json",
+    "hawk_raw_json": "ual_json",
+    "hawk_flat_csv": "ual_flat_csv",
 }
 
 
@@ -39,7 +41,7 @@ def ingested(corpus_dir, tmp_path_factory):
     out = {}
     base = tmp_path_factory.mktemp("cases")
     for sid in ("demo_bec", "attack_legacy_forwarding", "attack_oauth_consent", "benign_admin_bulk",
-                "benign_travel_newphone"):
+                "benign_travel_newphone", "collector_hawk_legacy"):
         case = Case(base / sid)
         out[sid] = (case, ingest(corpus_dir / sid / "exports", case, force=True))
     return out
@@ -291,3 +293,21 @@ def test_split_ip(raw, ip):
 def test_record_type_by_name_and_operation_case():
     ev = normalize_auditdata(_ad(9, RecordType="ExchangeAdmin", Operation="set-InboxRule", Parameters=[]))
     assert ev.source == "ual_exchange_admin" and ev.action == "inbox_rule.update"
+
+
+def test_flattened_rows_rebuild_into_audit_records():
+    from tenanttrace.ingest.parsers import rebuild_auditdata
+
+    header = ["CreationTime", "Workload", "RecordType", "Operation", "ResultStatus", "ClientIP", "UserId", "Id",
+              "AppAccessContext", "ParameterString", "Param_ForwardingSmtpAddress", "Param_Identity", "CountryName"]
+    row = ["2026-09-29T04:21:00", "Exchange", "1", "Set-Mailbox", "True", "203.0.113.120:1234",
+           "a@contoso.example", "11111111-1111-4111-8111-111111111111",
+           "@{AADSessionId=s-1; UniqueTokenId=TokA}", "-Identity a@contoso.example",
+           "smtp:x@relay.example.net", "a@contoso.example", "Germany"]
+    ad, enrichment = rebuild_auditdata(header, row)
+    assert ad["RecordType"] == 1 and ad["AppAccessContext"] == {"AADSessionId": "s-1", "UniqueTokenId": "TokA"}
+    assert {"Name": "ForwardingSmtpAddress", "Value": "smtp:x@relay.example.net"} in ad["Parameters"]
+    assert enrichment == {"CountryName": "Germany"}       # collector enrichment is kept apart
+    ev = normalize_auditdata(ad)
+    assert ev.action == "mailbox.forwarding_set" and ev.session_id == "s-1" and ev.token_id == "TokA"
+    assert ev.geo_country == ""                            # location never comes from collector enrichment

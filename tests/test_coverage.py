@@ -17,7 +17,8 @@ from tenanttrace.pipeline import coverage, ingest
 ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = ["demo_bec", "attack_legacy_forwarding", "attack_oauth_consent", "attack_travel_delegate",
              "benign_admin_bulk", "benign_forwarding_vpn", "benign_travel_newphone", "degraded_no_signins",
-             "degraded_ual_truncated", "degraded_retention_7d", "degraded_no_mailbox_audit", "degraded_quiet_period"]
+             "degraded_ual_truncated", "degraded_retention_7d", "degraded_no_mailbox_audit", "degraded_quiet_period",
+             "collector_hawk_legacy"]
 
 
 @pytest.fixture(scope="module")

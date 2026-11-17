@@ -54,6 +54,11 @@ def _audit_records(fmt: str, path: Path):
         for wrapper in json.loads(_decode(path.read_bytes())):
             assert sorted(wrapper) == sorted(LAYOUTS["extractor_suite_ual_json_wrapper"]["keys"])
             yield wrapper["AuditData"]
+    elif fmt == "hawk_raw_json":
+        for wrapper in json.loads(_decode(path.read_bytes())):
+            assert sorted(wrapper) == sorted(LAYOUTS["hawk_raw_json_wrapper"]["keys"])
+            assert isinstance(wrapper["AuditData"], str)      # ConvertTo-Json keeps it a string
+            yield json.loads(wrapper["AuditData"])
 
 
 def _signin_objects(fmt: str, path: Path):
@@ -126,11 +131,27 @@ def test_signin_json_fields_are_documented(corpus_dir):
     assert checked > 1000
 
 
+def test_hawk_flattened_columns_follow_the_documented_order(corpus_dir):
+    seen = 0
+    for _, fmt, path, _ in _files(corpus_dir):
+        if fmt != "hawk_flat_csv":
+            continue
+        header = _csv_rows(path)[0]
+        lead = LAYOUTS["hawk_auth_lead"] if path.name.startswith("Converted_") else LAYOUTS["hawk_simple_lead"]
+        present = [c for c in lead if c in header]
+        assert header[:len(present)] == present, (path.name, header[:8])
+        params = [c for c in header if c.startswith("Param_")]
+        assert params == sorted(params)
+        assert "AuditData" not in header
+        seen += 1
+    assert seen >= 2
+
+
 def test_record_counts_in_ground_truth_match_files(corpus_dir):
     for _, fmt, path, f in _files(corpus_dir):
-        if fmt in CSV_FORMATS:
+        if fmt in CSV_FORMATS or fmt == "hawk_flat_csv":
             n = len(_csv_rows(path)) - 1
-        elif fmt == "extractor_suite_ual_json":
+        elif fmt in ("extractor_suite_ual_json", "hawk_raw_json"):
             n = len(json.loads(_decode(path.read_bytes())))
         else:
             n = sum(1 for _ in _signin_objects(fmt, path))
